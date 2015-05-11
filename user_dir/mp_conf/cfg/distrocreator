@@ -1,0 +1,8 @@
+				    distrocreator--branch-*)
+					INSTALLER=${with_installer:-"club"}
+					BRANDING=${with_branding:-"club"}
+					APTCONF_PACKAGE="branch"
+					with_nvidia="nvidia"
+					NODOCS="#"
+					LABEL="DistroCreator"
+					DEFAULT_ISO=${with_image:-"distrocreator--branch-.cd"};; 

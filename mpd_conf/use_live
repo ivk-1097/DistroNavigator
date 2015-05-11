@@ -1,0 +1,4 @@
+
+use-project-live:  #--mark
+	echo GLOBAL_LIVE_PACKAGE_LISTS+='project project-live prof_string' >> "$(call scfg,live)"   #--mark
+	$(call done,$@)    #--mark

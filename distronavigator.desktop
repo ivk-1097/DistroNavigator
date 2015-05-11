@@ -1,0 +1,14 @@
+[Desktop Entry]
+Categories=Development;
+Comment=DistroNavigator
+Comment[ru]=Сборка дистрибутивов на основе ALT Linux
+Exec=distronavigator
+GenericName=
+GenericName[ru]=
+Icon=distronavigator
+MimeType=
+Name=DistroNavigator
+Name[ru]=ДистроНавигатор
+StartupNotify=true
+Terminal=false
+Type=Application

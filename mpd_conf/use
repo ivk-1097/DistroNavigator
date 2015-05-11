@@ -1,0 +1,6 @@
+
+use-name1:  #--mark
+	echo GLOBAL_BASE_PACKAGE_LISTS+='name2' >> "$(call scfg,main)" #--mark
+	echo GLOBAL_DISK_PACKAGE_LISTS+='   string1  ' >> "$(call scfg,main)" #--mark-gr
+	echo GLOBAL_PKG_GROUPS+='   string2  ' >> $(AUTOCFG) #--mark-gr
+	$(call done,$@) #--mark

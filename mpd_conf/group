@@ -1,0 +1,8 @@
+[Desktop Entry]
+Encoding=UTF-8
+Type=Directory
+Name=gr_name
+X-Alterator-Required=yes
+X-Alterator-PackageList=distro-gr_name
+Name[ru_RU]=description
+Categories=WMaker

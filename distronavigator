@@ -1,0 +1,4 @@
+#!/bin/bash
+# -*- coding: utf-8 -*-
+cd /usr/share/distronavigator/
+python distronavigator.py
