@@ -1,7 +1,0 @@
-				   kde-lite--branch-*)
-					BRANDING=${with_branding:-"club"}
-					INSTALLER=${with_installer:-"club"}
-					APTCONF_PACKAGE="branch"
-					DOCS=${with_docs:-"desktop"}
-					LABEL="KDE Desktop"
-					DEFAULT_ISO=${with_image:-"kde-lite--branch-.cd"};;

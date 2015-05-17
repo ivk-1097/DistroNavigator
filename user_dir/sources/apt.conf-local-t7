@@ -1,2 +1,0 @@
-Dir::Etc::SourceList "/home/user/.distronavigator/sources/my_repos-t7";
-Dir::Etc::SourceParts "/var/empty";

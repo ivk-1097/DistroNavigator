@@ -1,3 +1,0 @@
-Dir::Etc::SourceList "/home/user/.distronavigator/sources/my_repos-p6";
-Dir::Etc::SourceParts "/var/empty";
-Dir::Cache "/var/cache/apt/";

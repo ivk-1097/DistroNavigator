@@ -1,7 +1,0 @@
-				   lxde-lite--branch-*)
-					INSTALLER=${with_installer:-"club-small"}
-					BRANDING=${with_branding:-"club"}
-					APTCONF_PACKAGE="branch"					
-					NODOCS="#"
-					LABEL="LXDE Desktop"
-					DEFAULT_ISO=${with_image:-"lxde-lite--branch-.cd"};;

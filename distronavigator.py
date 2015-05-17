@@ -22,17 +22,17 @@ home_dir = pwd.getpwuid(subprocess.os.getuid())[ 5 ]  # ... и адрес его
 navigator_is = subprocess.os.path.exists(home_dir+'/.distronavigator')   # выясняем, существует ли конфигурационный каталог программы
 navigator_dir = home_dir+'/.distronavigator'
 if navigator_is == False:
-    subprocess.call('cp -rf /usr/share/distronavigator/.distronavigator '+home_dir+' && tar -xf /usr/share/distronavigator/mpd.tar.gz -C '+navigator_dir+' && tar -xf /usr/share/distronavigator/mp.tar.gz -C '+navigator_dir+' && sed -i -e "s!user!'+user+'!g" '+navigator_dir+'/main/images_dir '+navigator_dir+'/sources/* && mkdir -p '+navigator_dir+'/repo/i586/RPMS.hasher '+navigator_dir+'/repo/SRPMS.hasher '+navigator_dir+'/repo/i586/base && genbasedir --topdir='+navigator_dir+'/repo i586 hasher',shell=True)  # если его нет, то создаём его - и прописываем путь к нему в некоторых файлах, а также создаём личный репозиторий
+    subprocess.call('tar -xf /usr/share/distronavigator/.distronavigator.tar.gz -C '+home_dir+' && tar -xf /usr/share/distronavigator/mpd.tar.gz -C '+navigator_dir+' && tar -xf /usr/share/distronavigator/mp.tar.gz -C '+navigator_dir+' && sed -i -e "s!user!'+user+'!g" '+navigator_dir+'/sources/* -e "s!homedir!'+home_dir+'!g" '+navigator_dir+'/settings && mkdir -p '+navigator_dir+'/repo/i586/RPMS.hasher '+navigator_dir+'/repo/SRPMS.hasher '+navigator_dir+'/repo/i586/base && genbasedir --topdir='+navigator_dir+'/repo i586 hasher',shell=True)  # если его нет, то создаём его - и прописываем путь к нему в некоторых файлах, а также создаём личный репозиторий
 tmp_dir = '/tmp/.private/'+user+'/distronavigator'   # каталог программы в tmpfs
 pics_dir = '/usr/share/distronavigator/pics'
-brandings_dir = navigator_dir+'/brandings/brandings/' 
+brandings_dir = navigator_dir+'/brandings/' 
 subprocess.call('mkdir -p '+tmp_dir, shell=True)
 buttons=[]  #  список кнопок основной панели (для очистки при переходе на другую страницу)
 tw_d = 0  # для удаления текстовых окон
 mes_is = 0  # для удаления сообщений
 var_br_edit = '' 
 branches = ['t7---t7','p7---p7','t6---t6','p6---p6']
-base_distros_mpd = ['distrocreator.cd---DistroCreator','tde-mini.cd---TDE-mini','wmsmall.cd---WMSmall','kde-lite.cd---KDE-lite','lxde-lite.cd---LXDE-lite']
+base_distros_mpd = ['distrocreator.cd---DistroCreator','tde-mini.cd---TDE-mini','wmsmall.cd---WMSmall','kde-lite.cd---KDE-lite','lxde-lite.cd---LXDE-lite','fvwm.cd---fvwm']
 base_distros_mp = ['tde.iso---tde.iso'] 
 make_d = False  # идёт ли в данный момент сборка дистрибутива
 make_b = False # идёт ли в данный момент сборка пакетов брендинга
@@ -49,7 +49,7 @@ def open_f(n,mode='r',tx='',out='',sl=''):
 # Верхние кнопки
 class Top(QPushButton):
     def re_color(self):
-        if mp_mpd == 'mpd':            
+        if var_mp_mpd_work == 'mpd':            
             for x in ['projects','pkglists','branding','params','set_gui']:
                 eval("top_"+x+".setStyleSheet ('Top:!hover { background-color:#359a51 } Top:hover { background-color: #11da33 }')")   # всем кнопкам - исходный цвет...                            
             self.setStyleSheet ('Top {background-color: #e9fbd5}') # ...но активной - другой
@@ -157,10 +157,12 @@ class R_But(QGroupBox):
                 d = "'"+line2[0]+"'"  # выясняем условное имя кнопки 
                 eval(a3+'_rb.clicked.connect(lambda: '+func+'(rb_name='+d+'))')  # указываем функцию,работающую при нажатии на кнопку
             if  checked != '': # если нужно, чтобы какая-то кнопка была активна...
-                open_f (n=checked,out='checked_rb')  # ...смотрим в конфиге, какая именно 
-                if checked_rb != 'none' and checked_rb != '':
-                    checked_rb2 = checked_rb.replace("-","_").replace(".","_")
-                    eval (checked_rb2+'_rb.setChecked(True)')              
+                if '/' in checked: # если она указана в файле... 
+                    open_f (n=checked,out='checked_rb')  # ...смотрим там 
+                else:  # если указана напрямую
+                    checked_rb = checked
+                if checked_rb != 'none':               
+                    eval (checked_rb.replace("-","_").replace(".","_")+'_rb.setChecked(True)') 
             scroll.setWidget(self)              
             scroll.show()            
 
@@ -246,7 +248,7 @@ class Label (QLabel):
 # Пункт в настройках сборочницы или программы
 class Sett (QCheckBox):
     def __init__(self,tx='',n='',var=''):
-        exec ("def "+n+"(var=var):\n global var_"+n+"\n global var_expls\n global var_mp_mpd_choice\n global set_par\n open_f (n=navigator_dir+'/settings/"+n+"',mode='w',tx=str(var))\n var_"+n+" = str(var)\n if var_expls=='False':\n  tes = Pic(im='/usr/share/distronavigator/pics/explan/empty.png',x=20,y=80)\n elif set_par=='set':\n  Pic(im='/usr/share/distronavigator/pics/explan/set.png',x=0,y=130)\n if var_mp_mpd_choice=='True':\n  but_mp_mpd.show()\n else:\n  but_mp_mpd.hide()\n   ") in globals(), locals()  # создаём функцию, запускаемую при активации/деактивации пункта
+        exec ("def "+n+"(var=var):\n global var_"+n+"\n global var_expls\n global var_mp_mpd_choice\n global set_par\n subprocess.call ('sed -i /"+n+"/c"+n+"\ '+str(var)+' "+navigator_dir+"/settings',shell=True)\n var_"+n+" = str(var)\n if var_expls=='False':\n  tes = Pic(im='/usr/share/distronavigator/pics/explan/empty.png',x=20,y=80)\n elif set_par=='set':\n  Pic(im='/usr/share/distronavigator/pics/explan/set.png',x=0,y=130)\n if var_mp_mpd_choice=='True':\n  but_mp_mpd.show()\n else:\n  but_mp_mpd.hide()\n   ") in globals(), locals()  # создаём функцию, запускаемую при активации/деактивации пункта
         super(Sett, self).__init__(parent=inter,text=tx)  # создаём сам пункт 
         self.setChecked(eval(var))  # активируем, если велено
         inter.layout.addWidget(self)  # размещаем
@@ -257,28 +259,28 @@ class Observ(QObject):
     def ob(self,x):
         global make_d
         global make_b
-        global src_branding_is       
+        global var_src_branding_is       
         if x == 'mp_make_start':
             what_stat.setText(u"Сборка в m-p\nдистрибутива\n"+pr_visname2)
             make_d = True  # включаем индикатор, показывающий, что сейчас идёт сборка дистрибутива        
         if x == 'autoconf_err':
             show_report(tx=u"Не  удалось создать\nфайл configure",color='red')                           
             if var_music == 'True':
-                subprocess.call('mpg123 /usr/share/distronavigator/music/er.mp3  > /dev/null 2>&1 &', shell=True)
+                subprocess.call('mpg123 /usr/share/distronavigator/music/error.mp3  > /dev/null 2>&1 &', shell=True)
         if x == 'configure_err':
             show_report(tx=u"Ошибка при \nконфигурировании\nдистрибутива",color='red')                           
             if var_music == 'True':
-                subprocess.call('mpg123 /usr/share/distronavigator/music/er.mp3  > /dev/null 2>&1 &', shell=True)
+                subprocess.call('mpg123 /usr/share/distronavigator/music/error.mp3  > /dev/null 2>&1 &', shell=True)
         if x == 'make_err':
             show_report(tx=u"Сборка дистрибутива\n завершилась неудачно",color='red')                           
             if var_music == 'True':
-                subprocess.call('mpg123 /usr/share/distronavigator/music/er.mp3  > /dev/null 2>&1 &', shell=True)
+                subprocess.call('mpg123 /usr/share/distronavigator/music/error.mp3  > /dev/null 2>&1 &', shell=True)
         if x == 'repo_err':
             all_repos()          
             top_params.re_color()           
             show_report(tx=u"Проверьте список\nрепозиториев",color='red')                           
             if var_music == 'True':
-                subprocess.call('mpg123 /usr/share/distronavigator/music/er.mp3  > /dev/null 2>&1 &', shell=True)
+                subprocess.call('mpg123 /usr/share/distronavigator/music/error.mp3  > /dev/null 2>&1 &', shell=True)
         if x == 'clean_err':
             show_report(tx=u"Ошибка при очистке\n сборочницы",color='red')
         if x == 'break_d':
@@ -297,19 +299,19 @@ class Observ(QObject):
         if x == 'tar_err':
             show_report(tx=u"Не  удалось\nупаковать архив",color='red')                       
             if var_music == 'True':
-                subprocess.call('mpg123 /usr/share/distronavigator/music/er.mp3  > /dev/null 2>&1 & ', shell=True)
+                subprocess.call('mpg123 /usr/share/distronavigator/music/error.mp3  > /dev/null 2>&1 & ', shell=True)
         if x == 'srpmbuild_err':
             show_report(tx=u"Ошибка при создании\n srpm",color='red')                        
             if var_music == 'True':
-                subprocess.call('mpg123 /usr/share/distronavigator/music/er.mp3  > /dev/null 2>&1 &', shell=True)
+                subprocess.call('mpg123 /usr/share/distronavigator/music/error.mp3  > /dev/null 2>&1 &', shell=True)
         if x == 'rpmbuild_err':
             show_report(tx=u"Ошибка при\n сборке rpm-пакетов",color='red')                        
             if var_music == 'True':
-                subprocess.call('mpg123 /usr/share/distronavigator/music/er.mp3  > /dev/null 2>&1 &', shell=True)
+                subprocess.call('mpg123 /usr/share/distronavigator/music/error.mp3  > /dev/null 2>&1 &', shell=True)
         if x == 'genbasedir_err':
             show_report(tx=u"Ошибка при\n обновлении\nрепозитория",color='red')                       
             if var_music == 'True':
-                subprocess.call('mpg123 /usr/share/distronavigator/music/er.mp3  > /dev/null 2>&1 &', shell=True)
+                subprocess.call('mpg123 /usr/share/distronavigator/music/error.mp3  > /dev/null 2>&1 &', shell=True)
         if x == 'tar_start':
             what_stat.setText(u"   Упаковка\n   исходников\nбрендинга в .tar")
             make_b = True  # включаем индикатор, показывающий, что сейчас идёт сборка пакетов брендинга
@@ -334,7 +336,8 @@ class Observ(QObject):
             what_stat.setText(u"Загрузка исходников\nклубного\nбрендинга")               
         if x == 'get_ok':
             what_stat.setText('')
-            src_branding_is = 'True'
+            var_src_branding_is = 'True'
+            config_write(name='src_branding_is',value='True')
             brandings_pages()
             mes.new_mes (tx=u'Теперь можно\nсоздавать\nсвой брендинг')                                       
         if x == 'get_err':
@@ -347,8 +350,8 @@ def active_project(rb_name):  # работает при выборе юзеро�
     actproject()
         
 def active_branch(rb_name):  # работает при выборе юзером какого-либо бранча
-    global branch_var
-    branch_var = rb_name 
+    global var_branch
+    var_branch = rb_name 
     
 def destr(n):  # удаление объекта   
     n.setParent(None)
@@ -356,40 +359,41 @@ def destr(n):  # удаление объекта
     
 def top_but_equal():
     for x in ['projects','pkglists','branding','params','set_gui']:
-        if mp_mpd == 'mpd':
+        if var_mp_mpd_work == 'mpd':
             eval("top_"+x+".setStyleSheet ('Top:!hover {background-color:#359a51} Top:hover { background-color: #11da33 }')")   # всем кнопкам - исходный цвет...               
         else:
             eval("top_"+x+".setStyleSheet ('Top:!hover {background-color:#6d74d3} Top:hover { background-color: #414abd }')")   # всем кнопкам - исходный цвет...
+
+def config_write(name,value):  #  запись нового значения переменной в основной конфиг
+    subprocess.call("sed -i '/"+name+"/c"+name+" "+unicode(value)+"' "+navigator_dir+"/settings",shell=True)
             
 def mp_mpd_switch(): # переключение между сборочными системами кнопкой
-    global mp_mpd
+    global var_mp_mpd_work
     if make_d == True:
         mes.new_mes(tx=u'Нельзя переключаться\nна другую сборочницу\nво время сборки\nдистрибутива',color='purple')
     else:
-        if mp_mpd == 'mp':
-            mp_mpd = 'mpd'
+        if var_mp_mpd_work == 'mp':
+            var_mp_mpd_work = 'mpd'
         else:
-            mp_mpd = 'mp'            
+            var_mp_mpd_work = 'mp'            
         mp_mpd_choice()                          
                 
 # Настройка программы под выбранную сборочную систему
 def mp_mpd_choice():
-    global mp_mpd
+    global var_mp_mpd_work
     global build_dir
     global conf_dir
-    global conf_dir_0
+    global for_dir
     global base_distros
     global project
-    build_dir = navigator_dir+'/'+mp_mpd
-    conf_dir = navigator_dir+'/'+mp_mpd+'_conf'
-    conf_dir_0 = '/usr/share/distronavigator/'+mp_mpd+'_conf' 
-    but_mp_mpd.setText(mp_mpd)
-    base_distros =  eval('base_distros_'+mp_mpd)
-    open_f (n=conf_dir+'/default_project',out='default_project')  # определяем проект по умолчанию
-    project = 'none'   # заглушка на случай отсутствия такового
-    d = subprocess.os.path.exists(conf_dir+'/projects/'+default_project)  # проверяем его наличие 
-    if d == True:
-        project = default_project # устанавливаем проект по умолчанию 
+    global default_project    
+    build_dir = navigator_dir+'/'+var_mp_mpd_work
+    conf_dir = navigator_dir+'/'+var_mp_mpd_work+'_conf'
+    for_dir = '/usr/share/distronavigator/for_'+var_mp_mpd_work 
+    but_mp_mpd.setText(var_mp_mpd_work)
+    base_distros =  eval('base_distros_'+var_mp_mpd_work)
+    default_project = eval('var_'+var_mp_mpd_work+'_default_project')
+    project = default_project # устанавливаем проект по умолчанию 
     actproject()
     colors()
     main_page()
@@ -414,7 +418,7 @@ def actproject():
     pr_groups = c[5]  #  используются ли дополнительные группы пакетов
     pr_live_install = c[6]
     if project != 'none':           
-        what_project.setText(u'В разработке проект:\n'+c[1]+'\n'+project) 
+        what_project.setText(u'В разработке проект:\n'+c[1]+'\n('+project+')') 
     else:
         what_project.setText('')
     what_project.show()                
@@ -422,7 +426,7 @@ def actproject():
 def colors():    
     main_color = QPalette()
     app.setStyleSheet("QCheckBox:hover { background-color: 3333ff }")
-    if mp_mpd == 'mpd':
+    if var_mp_mpd_work == 'mpd':
         main_color.setColor(QPalette.Window, QColor("#e9fbd5")) #  основной цвет
         app.setStyleSheet("But {background-color:'#dbfbb9'} But:hover { background-color: #aeffb1 } But[evil='true'] {background-color:'#ff4444'} But[evil='true']:hover {background-color:'#ff0000'} QGroupBox { border:0px } R_But {background-color:#e9fbd5} QScrollArea, R_But, CheckBox_Group {background-color:#e9fbd5} QScrollArea {border:0px}") 
         button_re.setStyleSheet("QPushButton {background-color:'#dbfbb9'} QPushButton:hover { background-color: #aeffb1 } ")
@@ -439,27 +443,30 @@ def colors():
 def restor():
     global project
     project = 'none'  # не должно быть в это время активного проекта
-    i = subprocess.Popen('rm -rf '+navigator_dir+'/projects '+navigator_dir+'/mpd '+conf_dir+'/cfg && cp -rf /usr/share/distronavigator/.distronavigator/cfg '+navigator_dir+' && cat /dev/null >' +navigator_dir+'/main/work_projects && cat /dev/null >'+navigator_dir+'/main/hid_projects  && echo -n "none" >'+conf_dir+'/default_project  && cp -rf /usr/share/distronavigator/.distronavigator/projects '+navigator_dir+' && tar xf /usr/share/distronavigator/mpd.tar.gz -C '+navigator_dir,shell = True)
+    config_write (name='mpd_default_project',value='none') # ...и дефолтного тоже
+    i = subprocess.Popen('tar -xf /usr/share/distronavigator/.distronavigator.tar.gz -C '+tmp_dir+' && cp -rf '+tmp_dir+'/.distronavigator/mpd_conf -C '+conf_dir+' && tar xf /usr/share/distronavigator/mpd.tar.gz -C '+navigator_dir,shell = True)
     i.wait()  # удаляем каталог m-p-d и заменяем его "нулёвым", удаляем ещё списки проектов.
     if i.returncode == 0:
         mes.new_mes(tx=u'Сборочная система\nвосстановлена в\nпервоначальном виде')
-        open_f (n=navigator_dir+'/main/images_dir',mode='w',tx='--with-outdir='+navigator_dir+'/my_images')
         what_project.setText(u' ')
         what_project.show()
     if i.returncode != 0:
-        mes.new_mes(tx=u'Не удалось вернуть\nсборочную систему\nв первоначальное состояние')
+        mes.new_mes(tx=u'Не удалось вернуть\nсборочную систему\nв первоначальное\nсостояние',color='red')
 
 # Проверка права юзера использовать хашер
 def hasher():
-    subprocess.call('groups > '+tmp_dir+'/ha',shell=True)
-    open_f (n=tmp_dir+'/ha',out='h')  # ...проверяем наличие прав
-    if 'hashman' not in h and user != 'root': 
-        page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/hasher.png',i=1,expl_loc='main_area.setGeometry(0,32,780,520)',inter_loc='inter.setGeometry(62,273,580,60)',t=u"Использование хашера")  # ...если нет, предлагаем юзеру получить права
-        st = QTextEdit(parent=inter)
-        st.setGeometry(0,0,400,60)
-        st.setText(u'su-\n<тут впишите пароль root>\nhasher-useradd '+user)
-        st.show()
-        s = subprocess.Popen('xterm &',shell=True)
+    if var_hashman == 'False':
+        subprocess.call('groups > '+tmp_dir+'/ha',shell=True)
+        open_f (n=tmp_dir+'/ha',out='h')  # ...проверяем наличие прав
+        if 'hashman' in h:
+            config_write(name='hashman',value='True')
+        elif user != 'root': 
+            page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/hasher.png',i=1,expl_loc='main_area.setGeometry(0,32,780,520)',inter_loc='inter.setGeometry(62,273,580,60)',t=u"Использование хашера")  # ...если нет, предлагаем юзеру получить права
+            st = QTextEdit(parent=inter)
+            st.setGeometry(0,0,400,60)
+            st.setText(u'su-\n<тут впишите пароль root>\nhasher-useradd '+user)
+            st.show()
+            s = subprocess.Popen('xterm &',shell=True)
 
 def browser_ch(): # выбор браузера
     global browser
@@ -474,6 +481,21 @@ def panel_action_show():
     panel_action.adjustSize()   
     panel_action.show() 
     
+def where_repos():  # выясняем, сетевые или локальные репозитории используются для данного бранча
+    global repos_seat
+    open_f (n=navigator_dir+'/sources/local_net',out='branch_list',sl='.splitlines()')
+    for x in branch_list:
+        if var_branch in x:
+            repos_seat = x.split(' ')[1]           
+            break
+            
+def apt_conf_create():
+    where_repos()
+    add = ''
+    if repos_seat == 'net':
+        add = '\nDir::Cache "/var/cache/apt/";'
+    open_f (n=tmp_dir+'/apt.conf',mode='w',tx='Dir::Etc::SourceList "'+navigator_dir+'/sources/my_repos-'+var_branch+'";\nDir::Etc::SourceParts "/var/empty";'+add)
+  
 # Очистка сборочницы
 def distclean(x='hh'):
     global th_clean
@@ -560,7 +582,7 @@ def projects(tr=0):
     # Краткое имя проекта - основное без .cd/.dvd.
         global cd_dvd        
         global src_var
-        global branch_var
+        global var_branch
         global active_project
         global src_f
         global active_branch
@@ -568,7 +590,7 @@ def projects(tr=0):
         global radiogroup1
            
         def create_project(event):
-            global branch_var                                               
+            global var_branch                                               
             if entry_vis.text() == '':            # Должно быть выбрано отображаемое имя проекта
                 mes.new_mes(tx=u'Не указано \nотображаемое \nимя проекта',color='purple')
             elif entry_n.text() == '':              # Должно быть выбрано условное имя проекта
@@ -581,14 +603,16 @@ def projects(tr=0):
                 s0 = src_var.split('.')
                 if src_var in ['distrocreator.cd','wmsmall.cd','tde-mini.cd','kde-lite.cd','lxde-lite.cd']:                          
                     parent_begin = s0[0] + '-@BRANCH@.' + s0[1]    #   определяем начало строки родительского проекта в Makefile.in
-                    s0[0] = s0[0] + '-' + branch_var
-                    new_short = str(entry_n.text())+'-'+ branch_var # краткое условное имя нового проекта
+                    s0[0] = s0[0] + '-' + var_branch
+                    new_short = str(entry_n.text())+'-'+ var_branch # краткое условное имя нового проекта
                     cfg_end = ''
+                    par_2 = s0[0].replace('-t7','').replace('-p7','').replace('-t6','').replace('-p6','')
                 else:   # если родительский проект - тоже пользовательский                      
                     parent_begin = src_var
-                    branch_var = parent_begin.split('-')[-1].replace('.cd','').replace('.dvd','')
-                    new_short = str(entry_n.text())+'-'+branch_var 
-                    cfg_end = '-'+branch_var                    
+                    var_branch = parent_begin.split('-')[-1].replace('.cd','').replace('.dvd','')
+                    new_short = str(entry_n.text())+'-'+var_branch 
+                    cfg_end = '-'+var_branch 
+                    par_2 = s0[0]                   
                 new = new_short+'.'+str(cd_dvd.currentText())  # полное условное имя нового проекта 
                 pr_is = subprocess.os.path.exists (conf_dir+'/projects/'+new)  # нет ли уже проекта с таким именем
                 if pr_is == True:
@@ -603,15 +627,11 @@ def projects(tr=0):
                             if instal_live.currentIndex() in [4,5]: # если создаём Live, то строка родительского дистрибутива не нужна
                                 str_new = new+': |'+string_middle+cd_dvd.currentText().replace('dvd','dvd5').replace('.','')+'.@IMAGETYPE@'
                             else:   # если Install, то нужна                                                               
-                                str_new = x.replace(parent_begin+': | ',new+': | use-'+new_short+' ').replace('@BRANCH@',branch_var).replace(' main ',' ').replace(' live ',' ').replace(' install2 ',' ').replace(' install-dvd5.','').replace(' install-cd.','').replace('live-cd.','').replace('live-dvd5.','').replace('@IMAGETYPE@',string_middle+cd_dvd.currentText().replace('dvd','dvd5').replace('.','')+'.@IMAGETYPE@')  # на его основе создаём описание нового... 
+                                str_new = x.replace(parent_begin+': | ',new+': | use-'+new_short+' ').replace('@BRANCH@',var_branch).replace(' main ',' ').replace(' live ',' ').replace(' install2 ',' ').replace(' install-dvd5.','').replace(' install-cd.','').replace('live-cd.','').replace('live-dvd5.','').replace('@IMAGETYPE@',string_middle+cd_dvd.currentText().replace('dvd','dvd5').replace('.','')+'.@IMAGETYPE@')  # на его основе создаём описание нового... 
                             break
                     open_f (n=build_dir+'/Makefile.in',mode='a',tx=str_new+'\n')  #  добавляем его в Makefile.in               
-                    subprocess.call("sed -i '9s/PRODUCTS = /PRODUCTS = "+new+" /' "+build_dir+'/Makefile.in',shell=True)  # ...и его основное имя вносится туда же (в список PRODUCTS)                       
-                    open_f (n=conf_dir+'/cfg/'+s0[0].replace('-t7','').replace('-p6','').replace('-t7','').replace('-p7','')+cfg_end, out='x2')  # На основе секции родительского проекта в configure.ac создаётся секция нового проекта...
-                    y2=x2.replace(src_var,new).replace('-branch-',branch_var).replace(s0[0],new_short)
-                    open_f (n=tmp_dir+'/cfg',mode='w',tx=y2)
-                    open_f (n=conf_dir+'/cfg/'+new_short,mode='w',tx=y2) #...и вносится в '+conf_dir+'/cfg...
-                    subprocess.call('sed -i "/:-\\\"lite.cd\\\"};;/r '+tmp_dir+'/cfg" '+build_dir+'/configure.ac', shell=True)      # ....и в configure.ac
+                    subprocess.call("sed -i '9s/PRODUCTS = /PRODUCTS = "+new+" /' "+build_dir+'/Makefile.in',shell=True)  # ...и его основное имя вносится туда же (в список PRODUCTS) 
+                    subprocess.call ("sed -n '/"+par_2+"\*/,/"+par_2+".cd/p' "+build_dir+"/configure.ac > "+tmp_dir+"/cfg && sed -i -e '1s/"+par_2+"/"+new_short+"/' -e '$s/"+par_2+"/"+new_short+"/I' -e '/LABEL/s/"+par_2+"/"+new_short+"/I' "+tmp_dir+"/cfg && sed -i '50r "+tmp_dir+"/cfg' "+build_dir+"/configure.ac",shell=True)   # на основе секции родительского проекта в configure.ac создаётся секция нового проекта               
                     subprocess.call("sed -i -e '24s/use-gdm  /use-gdm  "+new_short+' '+new_short+'-main '" /' "+build_dir+"/use.mk.in", shell=True) # вписываем новый проект в use.mk.in
                     subprocess.call('touch '+build_dir+'/profiles/pkg/lists/'+new_short+' '+conf_dir+'/projects/'+new+'-groups && ln -s '+build_dir+'/profiles/pkg/lists/'+new_short+' '+build_dir+'/profiles/pkg/lists/'+new_short+'-main > /dev/null 2>&1',shell=True) # создаём нужные для проекта файлы 
                     if instal_live.currentIndex() in [0,2]:
@@ -620,15 +640,15 @@ def projects(tr=0):
                         distro_type = 'install_live'
                     else:
                         distro_type = 'live'                        
-                    project_conf = new_short+'\n'+unicode(entry_vis.text())+'\n'+src_var.replace('.dvd','').replace('.cd','')+'\n'+branch_var+'\n\nFalse\n'+distro_type+'\n'  # текст для конфига проекта
+                    project_conf = new_short+'\n'+unicode(entry_vis.text())+'\n'+src_var.replace('.dvd','').replace('.cd','')+'\n'+var_branch+'\n\nFalse\n'+distro_type+'\n'  # текст для конфига проекта
                     open_f(n=conf_dir+'/projects/'+new,mode='w',tx=project_conf)  # записываем этот конфиг
                     open_f (n=conf_dir+'/work_projects',mode='a',tx=new+'---'+unicode(entry_vis.text())+'\n') # добавляем проект в список проектов 
                     if instal_live.currentIndex() in [1,3,4,5]:
                         prof_list = []                       
                         for x in parent_string.split(' '):
                             if x.startswith('use-'):
-                                prof_list.append(x.replace('use-','').replace('@BRANCH@',branch_var))
-                        open_f (n=conf_dir_0+'/use_live',out='use0')  # из шаблона делаем  новый абзац для use.mk.in
+                                prof_list.append(x.replace('use-','').replace('@BRANCH@',var_branch))
+                        open_f (n=for_dir+'/use_live',out='use0')  # из шаблона делаем  новый абзац для use.mk.in
                         use1 = use0.replace('project',new_short).replace('prof_string',' '.join(prof_list)).replace('mark',new +'-live')
                         open_f (n=tmp_dir+'/ul',mode='w',tx=use1)
                         subprocess.call('cat '+tmp_dir+'/ul >> '+build_dir+'/use.mk.in', shell=True)
@@ -637,18 +657,16 @@ def projects(tr=0):
         
         def src_f(rb_name): 
             global src_var
-            global branch_var
             src_var = rb_name  # определяем имя родительского проекта
             if src_var in ['distrocreator.cd','wmsmall.cd','tde-mini.cd','kde-lite.cd','lxde-lite.cd']: # выясняем, базовый он или нет...
                 for x in ['p6_rb','t6_rb','p7_rb','t7_rb']:  
                     eval(x+'.setDisabled(False)')   # активируем...
-            else:        
+            else:       
                 for x in ['p6_rb','t6_rb','p7_rb','t7_rb']:  
                     eval(x+'.setDisabled(True)')   # ...или деактивируем радиокнопки выбора бранчей 
-                    branch_var = ''
                            
         # Интерфейс для создания нового проекта
-        if mp_mpd == 'mp':
+        if var_mp_mpd_work == 'mp':
             mes.new_mes(tx=u'В m-p это ещё\nне работает :(',color='purple')
         else:
             page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/new_project.png',i=1,expl_loc='main_area.setGeometry(0,410,780,150)',inter_loc='inter.setGeometry(0,40,780,350)',t=u"Создание нового проекта")
@@ -656,7 +674,6 @@ def projects(tr=0):
             but_create_project = But(parent=panel_action,com=create_project,tx=u'Создать\nпроект')         
             panel_action_show()
             src_var = 'distrocreator.cd'
-            branch_var = 't7' 
             radiogroup1 = QButtonGroup()
             fr_base_distros = R_But(x=15,y=40,h=180,w=140,r_list=base_distros,parent=inter,func='src_f',vis='line2[1]',radiogroup=radiogroup1)
             fr_branches = R_But(x=165,y=40,h=140,w=70,parent=inter,r_list=branches,func='active_branch',vis='line2[1]')
@@ -682,7 +699,7 @@ def projects(tr=0):
             instal_live.addItem(u"Установочный+Live+Rescue")
             instal_live.addItem(u"Live")   
             instal_live.addItem(u"Live с возможностью установки")                       
-            t7_rb.setChecked(True)
+            eval (var_branch+'_rb.setChecked(True)')
             distrocreator_cd_rb.setChecked(True)
         
     # Показ всех проектов - рабочих и скрытых - с возможностью превращения первых во вторые и наоборот
@@ -693,8 +710,8 @@ def projects(tr=0):
                                
         # Подтверждение изменений в статусе проектов
         def commit_pr():
-            if project in u'\n'.join(list_False):
-                mes.new_mes(tx=u'Нельзя скрывать\nактивный проект',color='purple')
+            if project in u'\n'.join(list_False) or eval('var_'+var_mp_mpd_work+'_default_project') in u'\n'.join(list_False):
+                mes.new_mes(tx=u'Нельзя скрывать\nактивный или\nдефолтный проект',color='purple')               
             else:
                 open_f (n=conf_dir+'/hid_projects',mode='w',tx=u'\n'.join(list_False)+'\n')
                 open_f (n=conf_dir+'/work_projects',mode='w',tx=u'\n'.join(list_True)+'\n')  # Рабочие и скрытые проекты прописываются в свои конфиги
@@ -726,7 +743,7 @@ def projects(tr=0):
                     for g in grs:
                         g2 = g.split("---")[0]
                         subprocess.call("rm -rf "+build_dir+"/profiles/pkg/lists/"+x_0+"-"+g2+" "+build_dir+"/profiles/pkg/groups/"+x_0+"-"+g2+".directory",shell=True)  # удаляем файлы групп пакетов проекта (если есть)                    
-                    subprocess.call("rm -rf "+conf_dir+'/projects/'+x+" "+conf_dir+'/projects/'+x+"-groups "+build_dir+"/profiles/pkg/lists/"+x_0+" "+build_dir+"/profiles/pkg/lists/"+x_0+"-main "+ navigator_dir+"/cfg/"+x_0+" && "+ "sed -i -e \'/"+x+": | /d\' -e \'10s/"+x+"//\' "+build_dir+"/Makefile.in",shell=True)  # удаляем каталог проекта, его pkglist, шаблон, записи в Makefile.in
+                    subprocess.call("rm -rf "+conf_dir+'/projects/'+x+" "+conf_dir+'/projects/'+x+"-groups "+build_dir+"/profiles/pkg/lists/"+x_0+" "+build_dir+"/profiles/pkg/lists/"+x_0+"-main && "+ "sed -i -e \'/"+x+": | /d\' -e \'10s/"+x+"//\' "+build_dir+"/Makefile.in",shell=True)  # удаляем каталог проекта, его pkglist, шаблон, записи в Makefile.in
                 open_f (n=conf_dir+'/hid_projects',mode='w',tx='\n'.join(list_False)+'\n')  #  переписывается файл-список скрытых проектов
                 if list_False == []:
                     open_f (n=conf_dir+'/hid_projects',mode='w',tx='')
@@ -755,21 +772,12 @@ def projects(tr=0):
         but_trash = But(parent=panel_action,com=trash,tx=u'Корзина')                          
         panel_action_show()
         
-    def def_project():
-        open_f (n=conf_dir+'/default_project',mode='w',tx=project)
-        open_f (n=conf_dir+'/projects/'+project,out='z',sl='.splitlines()')
+    def def_project():  # назначаем проект по умолчанию
+        config_write (name=var_mp_mpd_work+'_default_project',value=project)
+        open_f (n=conf_dir+'/projects/'+project,out='z',sl='.splitlines()')        
         mes.new_mes(tx=u'Проект по умолчанию -\n '+z[1])
         if project == 'none':
-            mes.new_mes(tx=u'Проект по умолчанию \n не выбран',color='purple')
-        
-    # Управление параметрами сборки
-    def mk_params():
-        global str_mk_tmpfs
-        open_f (n=navigator_dir+'/settings/tmpfs_d',out='tm')  # использовать ли tmpfs
-        str_mk_tmpfs = " TMP=0"
-        if tm == 'True':
-            str_mk_tmpfs = "TMP="+tmp_dir+"/mkimage-work-dir"   # указание для make использовать tmpfs
-        open_f (n=conf_dir+'/str_mk_tmpfs',mode='w',tx=str_mk_tmpfs)    # .....она записывается в файл '+conf_dir+'/str_mk_tmpfs        
+            mes.new_mes(tx=u'Проект по умолчанию \n не выбран',color='purple')      
     
     ######  Подготовка и запуск процесса сборки
     def pre_start():
@@ -778,7 +786,7 @@ def projects(tr=0):
         global make_d
         global show_report
         global choice_project
-        global branch_var
+        global var_branch
         global post
         global pr_visname2
            
@@ -795,8 +803,6 @@ def projects(tr=0):
         # Запуск процесса сборки
         def start():
             global choice_project
-            global m_clean
-            global str_mk_tmpfs
             global make_d
             global make_b
             global distro_run
@@ -825,7 +831,7 @@ def projects(tr=0):
                         global u
                         global next_command
                         self.emit(QtCore.SIGNAL('valueChanged(QString)'),signal)
-                        sleep(1)
+                        sleep(1) # иначе возможны сбои
                         u=subprocess.Popen(com, shell=True)  # выполняем команду
                         u.wait()
                         if u.returncode != 0:                # если  выполнение команды завершилось неудачно...
@@ -852,7 +858,7 @@ def projects(tr=0):
                                 clean_post()   # смотрим, выполнять ли очистку                            
                         
                     def clean_post():  # очистка сборочницы (если нужно)
-                        if m_clean == 'True':       # смотрим, включена ли опция очистки
+                        if var_clean == 'True':       # смотрим, включена ли опция очистки
                             sleep(0.1)
                             self.connect(self,QtCore.SIGNAL('valueChanged(QString)'),distclean) # ....и запускаем её
                             self.emit(QtCore.SIGNAL('valueChanged(QString)'),'bububu')                           
@@ -861,20 +867,17 @@ def projects(tr=0):
                     break_by_user = False      # индикатор, показывающий, завершилась ли сборка сама или была прервана пользователем
                     subprocess.os.chdir(build_dir)     # переходим в рабочий каталог сборочницы
                     self.connect(self,QtCore.SIGNAL('valueChanged(QString)'),observer.ob)                    
-                    if mp_mpd == 'mpd':                 
+                    if var_mp_mpd_work == 'mpd':   # если сборка производится в m-p-d              
                         ex(com ='autoconf > build.log 2>&1', mes_err='autoconf_err',signal='autoconf_start')   # создаём скрипт configure
                         if next_command == True:
                             ex(com = configure_str,mes_err='configure_err',signal='configure_start')         # конфигурируем дистрибутив
                         if next_command == True:   
                             subprocess.call('mkdir -p '+tmp_dir+'/mkimage-work-dir',shell=True) 
                             ex(com = make_str,mes_err='make_err',make=True,signal='make_start')          # выполняем его сборку
-                    else:
-                        ex(com ='BUILDLOG='+build_dir+'/build.log IMAGEDIR='+outdir_mp+' APTCONF='+navigator_dir+'/sources/apt.conf-'+nl2+'-'+bran+' make '+distr, mes_err='make_err',make=True,signal='mp_make_start')                      
-            
-            branch = ' '
-            open_f (n=navigator_dir+'/main/branch',out='bran')  #  смотрим, какой бранч используется
+                    else:  # если сборка производится в m-p
+                        ex(com ='BUILDLOG='+build_dir+'/build.log IMAGEDIR='+outdir+' APTCONF='+tmp_dir+'/apt.conf make '+distr, mes_err='make_err',make=True,signal='mp_make_start')                      
             nn = 1          
-            open_f (n=navigator_dir+'/sources/my_repos-'+bran,out='t2',sl='.splitlines()')          
+            open_f (n=navigator_dir+'/sources/my_repos-'+var_branch,out='t2',sl='.splitlines()')          
             for i in t2:
                 if 'rpm' not in i:   #  проверка, не забыл ли юзер указать репозитории для данного бранча
                     nn = 0
@@ -887,27 +890,22 @@ def projects(tr=0):
             elif make_b == True:
                 mes.new_mes(tx=u"Нельзя одновременно\nсобирать дистрибутив\nи пакеты брендинга",color='purple')   
             else:
-                branc = ' --with-version='+bran  # от этого зависит указание бранча в названии сборки и выбор репозиториев для сборки
-                open_f (n=navigator_dir+'/sources/local_net-'+bran,out='nl2') # выбор списка репозиториев
-                apt_conf = ' --with-aptconf='+navigator_dir+'/sources/apt.conf-'+nl2+'-'+bran+' '
-                mk_params()   #  выясняются установленные параметры сборки
-                subprocess.call('echo -n "" > '+build_dir+'/build.log',shell=True)  # удаляется журнал предыдущей сборки (иначе возможны странности)       
-                open_f (n=navigator_dir+'/brandings/one_sev',out='br')  
+                branc = ' --with-version='+var_branch  # от этого зависит указание бранча в названии сборки и выбор репозиториев для сборки
+                apt_conf_create()
+                subprocess.call('echo -n "" > '+build_dir+'/build.log',shell=True)  # удаляется журнал предыдущей сборки (иначе возможны странности)         
                 str_branding = ''
-                if br == 'one':  # если для всех проектов используется один брендинг...
-                    open_f (n=navigator_dir+'/brandings/common_branding',out='x')  # ...выясняем, какой именно
-                    str_branding = '--with-branding='+x
-                elif br == 'sev':  # а если разные...
+                if var_one_sev_brandings == 'one':  # если для всех проектов используется один брендинг...
+                    str_branding = '--with-branding='+var_common_branding
+                else:  # а если разные...
                     str_branding = '--with-branding='+pr_branding  # ...выясняем иначе
-                open_f (n=navigator_dir+'/main/images_dir',out='outdir')  # каталог для готовых образов
-                outdir_mp = outdir.replace('--with-outdir=','')
-                configure_str = './configure '+str_branding+' '+outdir+' --with-distro='+distr+branc+apt_conf+' >> build.log 2>&1' # строка запуска configure
+                configure_str = './configure '+str_branding+' --with-outdir='+var_outdir+' --with-distro='+distr+branc+' --with-aptconf='+tmp_dir+'/apt.conf >> build.log 2>&1' # строка запуска configure
                 nice19 = ''
-                open_f (n=navigator_dir+'/settings/nice',out='nice') # ограничение жадности
-                if nice == 'True':
+                use_tmpfs = '' 
+                if var_nice == 'True':  # ограничение жадности
                     nice19 = 'nice -n 19'
-                make_str = str_mk_tmpfs+' '+nice19+' make '+distr+' >> build.log 2>&1' # строка запуска сборки дистрибутива
-                open_f (n=navigator_dir+'/settings/clean',out='m_clean') # нужна ли очистка после сборки
+                if var_tmpfs_d == 'True':
+                    use_tmpfs = 'TMP='+tmp_dir+'/mkimage-work-dir'                    
+                make_str = use_tmpfs+' '+nice19+' make '+distr+' >> build.log 2>&1' # строка запуска сборки дистрибутива
                 but_break_mk_distro.show()
                 but_log.show()
                 panel_log.resize(174,75)
@@ -921,15 +919,12 @@ def projects(tr=0):
 
         # Подготовка к запуску процесса сборки
         if choice_project == 'base':
-            if base_var  == 'none':   # проверяем, указаны ли дистрибутив и бранч
+            if base_var  == 'none':   # проверяем, указан ли дистрибутив
                 mes.new_mes(tx=u"Дистрибутив\nне выбран",color='purple') 
-            elif branch_var == '':
-                mes.new_mes(tx=u"Бранч\nне выбран",color='purple')
             else:               
                 e = base_var.split('.')
-                distr = e[0]+'-'+branch_var+'.'+e[1]  # вычисляем название требуемого дистрибутива
+                distr = e[0]+'-'+var_branch+'.'+e[1]  # вычисляем название требуемого дистрибутива
                 pr_visname2 = distr
-                open_f (n=navigator_dir+'/main/branch',mode='w',tx=branch_var) #  вписываем в конфиг указанный юзером бранч
                 mes.hide()
                 start()
         else:   #  если собирается пользовательский дистрибутив
@@ -938,7 +933,6 @@ def projects(tr=0):
                 mes.new_mes(tx=u"Проект не выбран",color='purple')
             else:
                 pr_visname2 = pr_visname
-                open_f (n=navigator_dir+'/main/branch',mode='w',tx=pr_branch)   #  ... и вписываем бранч в конфиг
                 mes.hide()
                 start()
 
@@ -959,7 +953,7 @@ def projects(tr=0):
 
         def show_baseprojects(): # страница запуска при возможности собирать и базовые дистрибутивы
             global base_var
-            global branch_var
+            global var_branch
             global active_branch
             global src_f
             
@@ -975,8 +969,8 @@ def projects(tr=0):
             but_distclean  = But (parent=panel_action,com=distclean,tx=u"Очистить\nсборочницу",hint=u'Нажмите сюда, если процесс сборки обрывается, едва начавшись')
             fr_base_distros = R_But(x=50,y=70,h=250,w=140,r_list=base_distros,parent=inter,func='src_f',vis='line2[1]')
             fr_branches = R_But(x=245,y=70,h=200,w=170,parent=inter,r_list=branches,func='active_branch',vis='line2[1]')
+            eval(var_branch+'_rb.setChecked(True)')
             base_var = 'none'
-            branch_var = ''
             panel_action_show()
 
         def hide_baseprojects():
@@ -987,8 +981,7 @@ def projects(tr=0):
             but_distclean  = But(parent=panel_action,com=distclean,tx=u"Очистить\nсборочницу",hint=u'Нажмите сюда, если процесс сборки обрывается, едва начавшись')
             panel_action_show()
 
-        show_basepr = open(navigator_dir+'/settings/baseprojects').read()
-        if show_basepr == 'True':
+        if var_baseprojects == 'True':
             show_baseprojects()
         else:
             hide_baseprojects()
@@ -999,7 +992,7 @@ def projects(tr=0):
         wp = work_projects.read()
         if wp == '':
             page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/projects_no.png',i=1,expl_loc='main_area.setGeometry(0,300,780,260)',inter_loc='inter.setGeometry(0,40,780,260)',t=u'Проекты')     # пояснения показываются в зависимости от того, если ли уже хоть один проект                            
-    fr_projects = R_But(x=40,y=20,h=300,w=360,filename=conf_dir+'/work_projects',parent=inter,func='active_project',vis='line2[1]',checked=conf_dir+'/default_project')            
+    fr_projects = R_But(x=40,y=20,h=300,w=360,filename=conf_dir+'/work_projects',parent=inter,func='active_project',vis='line2[1]',checked=project)            
     what_branding.setText('')
     panel_action.hide()
     if tr == 0:    # кнопка показа всех проектов не создаётся, если функция вызвана из корзины
@@ -1029,7 +1022,7 @@ def pkglists():
                 global tw_d
                 global tw
                 panel_action.hide()
-                if mp_mpd == 'mpd':               
+                if var_mp_mpd_work == 'mpd':               
                     tw = Tx_wind (source=build_dir+'/profiles/pkg/lists/'+pr_shortname,out='file_text',h=240,w=400,x=250,y=3,font='Arial 14',mess=u'Список пакетов\nобновлён')
                 else:
                     tw = Tx_wind (source=build_dir+'/pkg.in/lists/nav/'+pr_shortname.replace('.iso',''),out='file_text',h=240,w=400,x=250,y=3,font='Arial 14',mess=u'Список пакетов\nобновлён')                    
@@ -1045,7 +1038,7 @@ def pkglists():
                 global tw
                 panel_action.hide()
                 a = ''
-                if mp_mpd == 'mpd':                
+                if var_mp_mpd_work == 'mpd':                
                     e = subprocess.os.path.exists(build_dir+'/profiles/pkg/lists/'+pr_parent+'-'+pr_branch+'.in')
                     if e == True:
                         a = '.in'               
@@ -1122,7 +1115,7 @@ def pkglists():
                     if unicode(entry_group_descr .text()) == '' or str(entry_group_name.text()) == '':
                        mes.new_mes(tx=u"Заполните\nвсе поля",color='purple')
                     else:
-                        open_f(n=conf_dir_0+'/group',out='g0')  # открываем шаблон файла описания группы
+                        open_f(n=for_dir+'/group',out='g0')  # открываем шаблон файла описания группы
                         g3 = g0.replace('gr_name',str(str(entry_group_name.text()))).replace('description',unicode(entry_group_descr.text())).replace('distro',pr_shortname) # делаем из шаблона описание группы
                         subprocess.call('echo '+'\"'+g3+'\"'+' >> '+build_dir+'/profiles/pkg/groups/'+pr_shortname+'-'+str(entry_group_name.text())+'.directory',shell=True)   # забрасываем его куда надо                     
                         open_f(n=build_dir+'/profiles/pkg/lists/'+pr_shortname+'-'+str(entry_group_name.text()),mode='w',tx=pkgs) # создаём пустой файл пакетов этой группы и, если группа создаётся из шаблона, копируем его туда
@@ -1137,7 +1130,7 @@ def pkglists():
                             mm2.append(z)
                         string1 = ' '.join(mm1)
                         string2 = ' '.join(mm2) 
-                        u = open(conf_dir_0+'/use')                                               
+                        u = open(for_dir+'/use')                                               
                         use0 = u.read()                   # из шаблона делаем  новый абзац для use.mk.in
                         use5 = use0.replace('name1',pr_shortname).replace('name2',pr_shortname+'-main').replace('mark',project+'--').replace('string1',string1).replace('string2',string1)
                         open_f(n=tmp_dir+'/jk',mode='w',tx=use5)
@@ -1181,7 +1174,7 @@ def pkglists():
                             tw = Tx_wind (source=conf_dir+'/drafts/'+var_draft,out='file_text',h=362,w=545,x=100,y=30,font='Arial 14',butt=u"Перезаписать",mess=u'Список пакетов\nобновлён')   # ...то открываем его с возможностью правки                            
                         elif var_draft in base_drafts:                                                     # а если штатный...
                             #expl = Pic(im='draft.png',insert=descr,coord='+25+70')
-                            tw = Tx_wind (source=conf_dir_0+'/drafts/'+var_draft,out='file_text',h=362,w=545,x=100,y=30,font='Arial 14', dis=1)  # ...то открываем read-only                        
+                            tw = Tx_wind (source=for_dir+'/drafts/'+var_draft,out='file_text',h=362,w=545,x=100,y=30,font='Arial 14', dis=1)  # ...то открываем read-only                        
                         but1 = But(parent=panel_action,com=add_group,tx=u"Создать группу\nиз шаблона")
                         but2 = But(parent=panel_action,com=drafts,tx=u"Список\nшаблонов") 
                         panel_action_show()
@@ -1195,7 +1188,7 @@ def pkglists():
                         mes.new_mes(tx=u"Шаблон\nне указан",color='purple')
                     elif var_draft in my_drafts:  # если выбран пользовательский шаблон...
                         subprocess.call('rm -f '+conf_dir+'/drafts/'+var_draft,shell=True) # ...удаляем его файл
-                        subprocess.call('sed -i "/'+var_draft+'--/d" '+conf_dir+'/drafts',shell=True) #
+                        subprocess.call('sed -i "/'+var_draft+'--/d" '+conf_dir+'/drafts_list',shell=True) #
                         drafts()     
                     else:
                         mes.new_mes(tx=u"Удалять можно лишь\nсозданные вами шаблоны",color='purple')
@@ -1206,14 +1199,14 @@ def pkglists():
                 
                 page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/drafts.png',i=1,expl_loc='main_area.setGeometry(0,320,780,240)',inter_loc='inter.setGeometry(0,40,780,260)',t=u'Шаблоны групп пакетов')
                 radiogroup1 = QButtonGroup()
-                fr_drafts1 = R_But(x=60,y=40,h=300,w=140,filename='/usr/share/distronavigator/main/drafts',parent=inter,func='draft_com',vis='line2[1]',radiogroup=radiogroup1)
-                fr_drafts2 = R_But(x=260,y=40,h=300,w=140,filename=conf_dir+'/drafts',parent=inter,func='draft_com',vis='line2[1]',radiogroup=radiogroup1)
+                fr_drafts1 = R_But(x=60,y=40,h=300,w=140,filename=for_dir+'/drafts_list',parent=inter,func='draft_com',vis='line2[1]',radiogroup=radiogroup1)
+                fr_drafts2 = R_But(x=260,y=40,h=300,w=140,filename=conf_dir+'/drafts_list',parent=inter,func='draft_com',vis='line2[1]',radiogroup=radiogroup1)
                 staff_drafts_label = Label (parent=inter,x=70,y=20,tx=u'Штатные шаблоны')
                 my_drafts_label = Label (parent=inter,x=285,y=20,tx=u'Мои шаблоны')
                 my_drafts = []
                 base_drafts = []
-                open_f(n='/usr/share/distronavigator/main/drafts',out='descr1',sl='.splitlines()')
-                open_f(n=conf_dir+'/drafts',out='descr2',sl='.splitlines()')
+                open_f(n=for_dir+'/drafts_list',out='descr1',sl='.splitlines()')
+                open_f(n=conf_dir+'/drafts_list',out='descr2',sl='.splitlines()')
                 for x in descr1:
                     nn = x.split('---')        # отделяем названия групп от описаний
                     base_drafts.append(nn[0])
@@ -1298,17 +1291,17 @@ def pkglists():
 def src_branding_get():
     global get_thread
     global get_run
-    global src_branding_is 
+    global var_src_branding_is 
     d = QMessageBox()         
     a = QtGui.QMessageBox.question(d, u'Установить исходники клубного брендинга?',u"Для создания своего брендинга необходимы исходные тексты брендинга Клуба активных пользователей ALT Linux. Установить их?", QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
     if a == QtGui.QMessageBox.Yes:
 
         class Thread_get(QObject):
             def run(self):
-                subprocess.os.chdir(brandings_dir+'club_branding')   # переходим в каталог для клубного брендинга
+                subprocess.os.chdir(brandings_dir+'altlinux-club-small')   # переходим в каталог для клубного брендинга
                 self.connect(self,QtCore.SIGNAL('valueChanged(QString)'),observer.ob) 
                 self.emit(QtCore.SIGNAL('valueChanged(QString)'),'get_start')                
-                u=subprocess.Popen('wget http://altclub.100ms.ru/Repo_p7/SRPMS.hasher/branding-altlinux-club-small-6.0.1-alt22.src.rpm && rpm2cpio branding-altlinux-club-small-6.0.1-alt22.src.rpm | cpio -i  && tar -xf branding.tar && mv -f branding.spec branding && rm -rf branding-altlinux-club-small-6.0.1-alt22.src.rpm branding.tar && cp -f /usr/share/distronavigator/main/release-notes.ru.html.in branding/notes && echo -n "True" > '+navigator_dir+'/main/src_branding', shell=True)      # выполняем команду
+                u=subprocess.Popen('wget http://altclub.100ms.ru/Repo_p7/SRPMS.hasher/branding-altlinux-club-small-6.0.1-alt22.src.rpm && rpm2cpio branding-altlinux-club-small-6.0.1-alt22.src.rpm | cpio -i  && tar -xf branding.tar && mv -f branding.spec branding && rm -rf branding-altlinux-club-small-6.0.1-alt22.src.rpm branding.tar && cp -f /usr/share/distronavigator/for_brandings/release-notes.ru.html.in branding/notes', shell=True)      # выполняем команду
                 u.wait()
                 if u.returncode == 0:
                      self.emit(QtCore.SIGNAL('valueChanged(QString)'),'get_ok') 
@@ -1324,21 +1317,17 @@ def src_branding_get():
 
 # Какую именно страницу открывать при нажатии кнопки "Оформление"        
 def brandings_pages():
-    global var_brandings_use
-    global var_brandings_edit
+    global var_branding_use
+    global var_branding_edit
     global various_headbands
-    open_f (n=navigator_dir+'/brandings/headbands',out='various_headbands') # предлагать ли выбор между общей заставкой и разными
-    open_f (n=navigator_dir+'/settings/brandings_use',out='vv')
-    var_brandings_use = vv
-    open_f (n=navigator_dir+'/settings/brandings_edit',out='dd')
-    var_brandings_edit = dd
+    various_headbands = var_headbands # предлагать ли выбор между общей заставкой и разными
     what_branding.setText('')
-    if var_brandings_use == 'True':  # показывать ли страницу выбора брендингов для использования
-        brandings_use()
-    elif src_branding_is == 'False':
+    if var_branding_use == 'True':  # показывать ли страницу выбора брендингов для использования
+        branding_use()
+    elif var_src_branding_is == 'False':
         src_branding_get()
-    elif var_brandings_edit == 'True':  # показывать ли страницу выбора брендингов для редактирования
-        brandings_edit()
+    elif var_branding_edit == 'True':  # показывать ли страницу выбора брендингов для редактирования
+        branding_edit()
     else:
         branding()
     log_restore()     
@@ -1350,83 +1339,90 @@ def demo_re():  # возврат в демо-режим
     branding(demo_mode=1,demo_mode2=1)
            
 ####### Выбор брендингов для использования  ########
-def brandings_use():
-    global no_brandings_use
+def branding_use():
+    global no_branding_use
     global br_edit_wr
     global one_sev
-    global def_bgh
-    global one_b
-    global common_branding 
+    global var_common_branding 
     
-    def no_brandings_use():        # отключение показа этой страницы
-        global var_brandings_use
-        open_f (n=navigator_dir+'/settings/brandings_use',mode='w',tx='False')
-        var_brandings_use = 'False'
-        if src_branding_is == 'False':
+    def no_branding_use():        # отключение показа этой страницы
+        global var_branding_use
+        config_write (name='branding_use',value='False')
+        var_branding_use = 'False'
+        if var_src_branding_is == 'False':
             src_branding_get()
         else:         
-            branding()
+            brandings_pages()
 
-    def def_br(t):
-        open_f (n=navigator_dir+'/brandings/use_def',mode='w',tx=str(t)) # ...записываем это в конфиг
+    def def_br(t):  # брендинг по умолчанию для каждого дистрибутив
+        global var_use_def_branding
+        config_write (name='use_def_branding',value=str(t)) 
         one_rb.setDisabled(t)   # деактивируем радиокнопки выбора брендингов
         sev_rb.setDisabled(t)               
         if t == True:    # если указано использовать родные брендинги дистрибутивов...
+            var_use_def_branding = 'True'
             panel_action.layout.removeWidget(buttons[-1])     
             buttons[-1].setParent(None)  # скрываем кнопку выбора
             del buttons[-1]
             panel_action.resize(174,212)
         else:         #   если выбор брендингов разрешён.....
-            open_f (n=navigator_dir+'/brandings/one_sev',mode='w',tx='one')
+            var_use_def_branding = 'False'
+            config_write (name='one_sev_brandings',value='one')
             one_rb.setChecked(True)
             but_one_branding = But(parent=panel_action,com=assign_common_branding,tx=u'Всегда использовать\nвыбранный брендинг')       # показываем одну из кнопок выбора
             panel_action.resize(174,246)
 
     #  Использовать ли общий для всех  проектов брендинг
     def one_sev(rb_name):
-        open_f (n=navigator_dir+'/brandings/one_sev',mode='w',tx=rb_name)
+        global var_one_sev_brandings
+        config_write (name='one_sev_brandings',value=rb_name)        
         if  rb_name == 'one':    # если указано использовать общий брендинг...
+            var_one_sev_brandings = 'one'
             panel_action.layout.removeWidget(buttons[-1])     
             buttons[-1].setParent(None)
             del buttons[-1]
-            but_one_branding = But(parent=panel_action,com=assign_common_branding,tx=u'Всегда использовать\nвыбранный брендинг')  #  ....показываем  кнопку его назначения
+            but_one_branding = But(parent=panel_action,com=assign_common_branding,tx=u'Всегда использовать\nвыбранный брендинг')  #  ...показываем  кнопку его назначения
         if  rb_name == 'sev':       # если указано для каждого проекта использовать отдельный брендинг
+            var_one_sev_brandings = 'sev'
             panel_action.layout.removeWidget(buttons[-1])     
             buttons[-1].setParent(None)
             del buttons[-1]
             but_one_branding = But(parent=panel_action,com=assign_separ_branding,tx=u'Выбранный брендинг -\n активному проекту')            
 
     # Назначение общего брендинга
-    def assign_common_branding():        
-        if common_branding == '':     # если юзер не выбрал брендинг...
+    def assign_common_branding():
+        global var_common_branding        
+        if var_common_branding == 'none':     # если юзер не выбрал брендинг...
             mes.new_mes(tx=u"Брендинг не выбран",color='purple')   # ...просим выбрать
         else:    # если выбрал...
-            open_f (n=navigator_dir+'/brandings/common_branding',mode='w',tx=common_branding) # ...вписываем в конфиг
-            mes.new_mes(tx=u"Для всех сборок\nбудет использоваться\nбрендинг\n"+common_branding)
+            config_write (name='common_branding',value=var_common_branding) # ...вписываем в конфиг
+            mes.new_mes(tx=u"Для всех сборок\nбудет использоваться\nбрендинг\n"+var_common_branding)
 
     # Привязка указанного брендинга к активному проекту
     def assign_separ_branding():
-        if common_branding == '':     # если юзер не выбрал брендинг.....
+        global var_common_branding
+        if var_common_branding == 'none':     # если юзер не выбрал брендинг.....
             mes.new_mes(tx=u"Брендинг не выбран",color='purple')    # ...просим выбрать
         elif  project == 'none':     # ... если нет активного проекта
             mes.new_mes(tx=u"Проект не выбран",color='purple')    # ...просим выбрать
         else:   # если выбрал, то вписываем в конфиг активного проекта имя брендинга
-            subprocess.call("sed -i '5c"+common_branding+"' "+pr_config,shell=True)  # записываем в конфиг проекта его брендинг
+            subprocess.call("sed -i '5c"+var_common_branding+"' "+pr_config,shell=True)  # записываем в конфиг проекта его брендинг
             open_f (n=pr_config,out='cnf',sl='.splitlines()')
-            mes.new_mes(tx=u"Для проекта\n"+unicode(cnf[1])+u"\nназначен брендинг\n"+common_branding)
+            mes.new_mes(tx=u"Для проекта\n"+unicode(cnf[1])+u"\nназначен брендинг\n"+var_common_branding)
             
     #  Выбор готовых брендингов из репозиториев
     def other_brandings():
-        global oth_branding
-        global common_branding
+        global oth_branding_choice
+        global var_common_branding
         global o_branding
         
         def for_all_distros():
-            global o_branding
+            global var_common_branding
             if o_branding == '':
                 mes.new_mes (tx=u'Брендинг\n не выбран',color='purple')
             else:
-                open_f (n=navigator_dir+'/brandings/common_branding',mode='w',tx=o_branding)
+                config_write (name='common_branding',value=o_branding)
+                var_common_branding = o_branding
                 mes.new_mes(tx=u"Для всех сборок\nбудет использоваться\nбрендинг\n"+o_branding)
             
         def for_one_distros():
@@ -1440,88 +1436,79 @@ def brandings_use():
                 open_f (n=pr_config,out='cnf',sl='.splitlines()')
                 mes.new_mes(tx=u"Для проекта\n"+unicode(cnf[1])+u"\nназначен брендинг\n"+o_branding)
             
-        def oth_branding(rb_name):
+        def oth_branding_choice(rb_name):
             global o_branding
             o_branding = rb_name
             
-        page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/other_brandings.png',i=1,expl_loc='main_area.setGeometry(0,320,780,240)',inter_loc='inter.setGeometry(0,40,780,260)',t=u'Выбор брендингов для использования из репозиториев') 
-        fr_groups = R_But(x=60,y=28,h=200,w=340,filename='/usr/share/distronavigator/main/other_brandings',parent=inter,func='oth_branding',vis='line2[1]')
-        o_branding = ''
-        open_f (n=navigator_dir+'/brandings/common_branding',out='common_branding')  # выясняем, определён ли какой-то общий брендинг        
-        if common_branding+'---'+common_branding in oth_br:
-            eval (common_branding.replace('-','_')+'_rb.setChecked(True)')
-            o_branding = common_branding  
+        page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/other_brandings.png',i=1,expl_loc='main_area.setGeometry(0,320,780,240)',inter_loc='inter.setGeometry(0,40,780,260)',t=u'Выбор брендингов из репозиториев') 
+        open_f (n='/usr/share/distronavigator/for_brandings/other_brandings',out='oth_br_list',sl='.splitlines()')           
+        fr_ob = R_But(x=60,y=28,h=200,w=340,filename='/usr/share/distronavigator/for_brandings/other_brandings',parent=inter,func='oth_branding_choice',vis='line2[1]')
+        o_branding = ''       
+        if var_common_branding+'---'+var_common_branding in oth_br_list:
+            eval (var_common_branding.replace('-','_')+'_rb.setChecked(True)')
+            o_branding = var_common_branding  
         but_for_all_distros = But(parent=panel_action,tx=u"Использовать для\nвсех дистрибутивов",com=for_all_distros)
-        if src_branding_is == 'True':               
+        if var_src_branding_is == 'True':               
             but_for_one_distros = But(parent=panel_action,tx=u"Использовать для\nактивного проекта",com=for_one_distros)
         panel_action.resize(174,75)
         
     def br_edit_wr(rb_name):
-        global common_branding
-        common_branding = rb_name
+        global var_common_branding
+        var_common_branding = rb_name
                                         
     page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/br_use.png',i=1,expl_loc='main_area.setGeometry(0,330,780,230)',inter_loc='inter.setGeometry(0,40,780,270)',t=u'Выбор брендингов для использования')
     panel_action.hide()
     but_new_branding =  But(parent=panel_action,tx=u"Создать новый\nбрендинг",com=new_branding)
-    common_branding = ''
-    open_f (n='/usr/share/distronavigator/main/other_brandings',out='oth_br',sl='.splitlines()')     
-    if src_branding_is == 'True':
+    but_other_brandings = But(parent=panel_action,tx=u"Выбрать брендинг\nиз репозиториев",com=other_brandings)
+    but_no_branding_use = But(parent=panel_action,tx=u"Не показывать\nэту страницу",com=no_branding_use)           
+    if var_src_branding_is == 'True':
         br_edit=''
-        open_f (n=navigator_dir+'/brandings/my_brandings',out='my_br',sl='.splitlines()')  #  список брендингов юзера
-        if my_br != []:
-            open_f (n=tmp_dir+'/all_br',mode='w',tx=u'club_branding---Клубный брендинг\n'+'\n'.join(my_br)+'\n')  # добавляем к нему клубный брендинг
-        else:
-            open_f (n=tmp_dir+'/all_br',mode='w',tx=u'club_branding---Клубный брендинг')   
-        fr_all_brandings = R_But(x=30,y=30,h=240,w=340,filename=tmp_dir+'/all_br',parent=inter,func='br_edit_wr',vis='line2[1]')  #  фрейм для брендингов       
-        fr_4 = R_But(x=400,y=100,h=100,w=420,r_list=[u'one---Использовать один брендинг для всех проектов', u'sev---Для каждого проекта выбирать брендинг отдельно'],checked=navigator_dir+'/brandings/one_sev',parent=inter,func='one_sev',vis='line2[1]')  # один брендинг для всех проектов или разные   
-        open_f (n=navigator_dir+'/brandings/common_branding',out='common_branding')  # выясняем, определён ли какой-то общий брендинг
-        if common_branding != '' and common_branding+'---'+common_branding not in oth_br:
-            eval (common_branding.replace('-','_')+'_rb.setChecked(True)')
-        open_f (n=navigator_dir+'/brandings/use_def',out='uf')  # ....разрешён ли выбор брендингов
+        open_f (n=navigator_dir+'/brandings/my_brandings',out='my_br_list',sl='.splitlines()')  #  список брендингов юзера
+        if my_br_list != []:  
+            fr_my_brandings = R_But(x=30,y=30,h=240,w=340,r_list=my_br_list,parent=inter,func='br_edit_wr',vis='line2[1]')  #  фрейм для брендингов       
+        fr_4 = R_But(x=400,y=100,h=100,w=420,r_list=[u'one---Использовать один брендинг для всех проектов', u'sev---Для каждого проекта выбирать брендинг отдельно'],checked=var_one_sev_brandings,parent=inter,func='one_sev',vis='line2[1]')  # один брендинг для всех проектов или разные     
+        if var_common_branding+'---'+var_common_branding in my_br_list:  # выясняем, определён ли какой-то общий брендинг
+            eval (var_common_branding.replace('-','_')+'_rb.setChecked(True)')
         ch_def_br = QCheckBox(parent=inter,text=u'Использовать для каждого\nпроекта его брендинг по умолчанию')
         ch_def_br.setFixedSize(380,53)
         ch_def_br.move(410,40)
-        ch_def_br.setChecked(eval(uf))
+        ch_def_br.setChecked(eval(var_use_def_branding))
         ch_def_br.clicked.connect(lambda: def_br(t=ch_def_br.isChecked())) 
         ch_def_br.show()
-        one_rb.setDisabled(eval(uf))
-        sev_rb.setDisabled(eval(uf))        
-        but_demo = But(parent=panel_action,tx=u"Демо-режим",com=demo)
-        if var_brandings_edit == 'True':
-            but_edit_branding = But(parent=panel_action,tx=u"Выбор брендингов\nдля редактирования",com=brandings_edit)
+        one_rb.setDisabled(eval(var_use_def_branding))  # отключаем эти кнопки, если используются брендинги по умолчанию
+        sev_rb.setDisabled(eval(var_use_def_branding))        
+        but_demo = But(parent=panel_action,tx=u"Демо-режим",com=demo)       
+        if var_branding_edit == 'True':
+            but_edit_branding = But(parent=panel_action,tx=u"Выбор брендингов\nдля редактирования",com=branding_edit)
         but_delete_brandings = But(parent=panel_action,tx=u"Удалить\nлишние брендинги",com=delete_brandings)
-        if uf == 'False':
-            open_f (n=navigator_dir+'/brandings/one_sev',out='os')
-            if os == 'one':
+        if var_use_def_branding == 'False':
+            if var_one_sev_brandings == 'one':
                 but_one_branding = But(parent=panel_action,tx=u"Всегда использовать\nвыбранный брендинг",com=assign_common_branding)
             else:   
-                but_separ_branding = But(parent=panel_action,tx=u"Выбранный брендинг -\n активному проекту",com=assign_separ_branding)        
-    but_other_brandings = But(parent=panel_action,tx=u"Выбрать брендинг\nиз репозиториев",com=other_brandings)
-    but_no_brandings_use = But(parent=panel_action,tx=u"Не показывать\nэту страницу",com=no_brandings_use)
+                but_separ_branding = But(parent=panel_action,tx=u"Выбранный брендинг -\n активному проекту",com=assign_separ_branding)
     panel_action_show()
 
 ####### Выбор брендингов для редактирования  ########
-def brandings_edit():
+def branding_edit():
     global bm
     global var_br_edit
-    global no_brandings_edit
+    global no_branding_edit
     global br_edit_wr
                     
     def w_branding():        
-        if var_br_edit == '':
+        if var_br_edit == 'none':
             mes.new_mes(tx=u"Брендинг не выбран",color='purple')
         else:
             branding(wb=1)
 
-    def no_brandings_edit():        # отключение показа этой страницы
-        open_f (n=navigator_dir+'/settings/brandings_edit',mode='w',tx='False')
-        var_brandings_edit = 'False'
+    def no_branding_edit():        # отключение показа этой страницы
+        open_f (n=navigator_dir+'/settings/branding_edit',mode='w',tx='False')
+        var_branding_edit = 'False'
         branding()
 
-    def main_branding():
-        
+    def main_branding():        
         if var_br_edit != '':
-            open_f (n=navigator_dir+'/brandings/main',mode='w',tx=var_br_edit)
+            config_write (name='my_main_branding',value=var_br_edit)
             mes.new_mes(tx=u"По умолчанию для\nредактирования будет\nоткрываться брендинг\n"+var_br_edit)
         else:
             mes.new_mes(tx=u"Брендинг не выбран",color='purple')
@@ -1532,15 +1519,15 @@ def brandings_edit():
                                
     page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/br_edit.png',i=1,expl_loc='main_area.setGeometry(0,360,780,200)',inter_loc='inter.setGeometry(0,40,780,300)',t=u'Выбор брендингов для редактирования')
     panel_action.hide()     
-    fr_my_brandings = R_But(x=40,y=30,h=260,w=450,filename=navigator_dir+'/brandings/my_brandings',parent=inter,func='br_edit_wr',vis='line2[1]',checked=navigator_dir+'/brandings/main')
-    open_f (n=navigator_dir+'/brandings/main',out='var_br_edit')
+    fr_my_brandings = R_But(x=40,y=30,h=260,w=450,filename=navigator_dir+'/brandings/my_brandings',parent=inter,func='br_edit_wr',vis='line2[1]',checked=var_my_main_branding)
+    var_br_edit = var_my_main_branding
     but_new_branding =  But(parent=panel_action,tx=u"Создать новый\nбрендинг",com=new_branding)
     but_my_branding = But(parent=panel_action,tx=u"Править выбранный\n  брендинг",com=w_branding)
     but_demo = But(parent=panel_action,tx=u"Демо-режим",com=demo)
-    if var_brandings_use == 'True':
-        but_edit_branding = But(parent=panel_action,tx=u"Выбор брендингов\nдля использования",com=brandings_use)
+    if var_branding_use == 'True':
+        but_edit_branding = But(parent=panel_action,tx=u"Выбор брендингов\nдля использования",com=branding_use)
     but_delete_brandings = But(parent=panel_action,tx=u"Удалить\nлишние брендинги",com=delete_brandings)
-    but_no_brandings_edit = But(parent=panel_action,tx=u"Не показывать\nэту страницу",com=no_brandings_edit)
+    but_no_branding_edit = But(parent=panel_action,tx=u"Не показывать\nэту страницу",com=no_branding_edit)
     but_main_branding = But(parent=panel_action,tx=u"Назначить выбранный\nбрендинг основным",com=main_branding)       
     panel_action_show()
 
@@ -1548,15 +1535,15 @@ def brandings_edit():
 def new_branding():
     global active_branch
     global br_choice
-    global branch_var
+    global var_branch
     global src_br
     
-    if src_branding_is == 'False':
+    if var_src_branding_is == 'False':
        src_branding_get()
     else:        
     
         def create_branding():
-            global branch_var
+            global var_branch
             global src_br 
             j = 0        
             for x in [entry_name,entry_theme,entry_release]:
@@ -1578,15 +1565,15 @@ def new_branding():
                 b = open(navigator_dir+'/brandings/my_brandings','a')
                 b.write(new_br+'---'+new_br+'\n')
                 b.close()
-                if src_br == 'club_branding':  # если новый брендинг создаётся на основе клубного
-                    subprocess.call('cp -r '+brandings_dir+'club_branding '+brandings_dir+new_br,shell=True) # копируем исходники клубного в каталог нового
-                    subprocess.call('sed -i -e /Packager/d '+brandings_dir+'club_branding/branding/branding.spec && sed  "1,10c\\%define theme '+br_theme+'\\n%define Theme Club\\n%define codename Cheiron\\n%define brand '+br_n+'\\n%define Brand Alt Linux\\n\\nName: branding-%brand-%theme\\nVersion: '+br_version+'\\nRelease: '+br_release+'\\nPackager: '+ my_name+' <'+email+'>\\n" '+brandings_dir+'club_branding/branding/branding.spec > '+tmp_dir+'/spec',shell=True) # вписываем в спек данные нового брендинга
+                if src_br == 'altlinux-club-small':  # если новый брендинг создаётся на основе клубного
+                    subprocess.call('cp -r '+brandings_dir+'altlinux-club-small '+brandings_dir+new_br,shell=True) # копируем исходники клубного в каталог нового
+                    subprocess.call('sed -i -e /Packager/d '+brandings_dir+'altlinux-club-small/branding/branding.spec && sed  "1,10c\\%define theme '+br_theme+'\\n%define Theme Club\\n%define codename Cheiron\\n%define brand '+br_n+'\\n%define Brand Alt Linux\\n\\nName: branding-%brand-%theme\\nVersion: '+br_version+'\\nRelease: '+br_release+'\\nPackager: '+ my_name+' <'+email+'>\\n" '+brandings_dir+'altlinux-club-small/branding/branding.spec > '+tmp_dir+'/spec',shell=True) # вписываем в спек данные нового брендинга
                 else: # если новый брендинг создаётся на основе пользовательского, то делаем то же с ним
                     subprocess.call('cp -r '+brandings_dir+src_br+' '+brandings_dir+new_br,shell=True)
                     subprocess.call('sed  "1,10c\\%define theme '+br_theme+'\\n%define Theme Club\\n%define codename Cheiron\\n%define brand '+br_n+'\\n%define Brand Alt Linux\\n\\nName: branding-%brand-%theme\\nVersion: '+br_version+'\\nRelease: '+br_release+'\\nPackager: '+ my_name+' <'+email+'>\\n" '+brandings_dir+src_br+'/branding/branding.spec > '+tmp_dir+'/spec',shell=True)
                 subprocess.call('cp -f '+tmp_dir+'/spec '+brandings_dir+new_br+'/branding/branding.spec',shell=True)
                 open_f (n=br_dir1 + '/full_name',mode='w',tx=new_br_full)
-                open_f (n=br_dir1 + '/branch',mode='w',tx=branch_var)
+                open_f (n=br_dir1 + '/branch',mode='w',tx=var_branch)
                 brandings_pages()
            
         def br_choice(rb_name):  # выбор брендинга                  
@@ -1594,17 +1581,16 @@ def new_branding():
             src_br = rb_name
 
         page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/new_br.png',i=1,expl_loc='main_area.setGeometry(0,340,780,200)',inter_loc='inter.setGeometry(0,40,780,280)',t=u'Создание нового брендинга',pic_x=70)
-        branch_var = 't7'
         open_f (n=navigator_dir+'/brandings/my_brandings',out='my_br',sl='.splitlines()')
         if my_br != []:
-            open_f (n=tmp_dir+'/all_br',mode='w',tx=u'club_branding---Клубный брендинг\n'+'\n'.join(my_br)+'\n')  # добавляем к нему клубный брендинг
+            open_f (n=tmp_dir+'/all_br',mode='w',tx=u'altlinux-club-small---Клубный брендинг\n'+'\n'.join(my_br)+'\n')  # добавляем к нему клубный брендинг
         else:
-            open_f (n=tmp_dir+'/all_br',mode='w',tx=u'club_branding---Клубный брендинг')
+            open_f (n=tmp_dir+'/all_br',mode='w',tx=u'altlinux-club-small---Клубный брендинг')
         fr_all_brandings = R_But(x=40,y=60,h=220,w=250,filename=tmp_dir+'/all_br',parent=inter,func='br_choice',vis='line2[1]')        
         fr_branches = R_But(x=340,y=60,h=140,w=70,parent=inter,r_list=branches,func='active_branch',vis='line2[1]')
-        t7_rb.setChecked(True)
-        club_branding_rb.setChecked(True)
-        src_br = 'club_branding'
+        eval(var_branch+'_rb.setChecked(True)')
+        altlinux_club_small_rb.setChecked(True)
+        src_br = 'altlinux-club-small'
         my_brandings_label = Label (parent=inter,x=60,y=40,tx=u'Базовые брендинги')
         branches_label = Label (parent=inter,x=340,y=40,tx=u'Бранчи')                     
         entry_name = Entry(x=500,y=55,width=200)
@@ -1631,9 +1617,7 @@ def delete_brandings():
     def del_br():
         global project
         global list_True
-        open_f (n=navigator_dir+'/brandings/main',out='brz1')
-        open_f (n=navigator_dir+'/brandings/common_branding',out='brz2')
-        if brz1+'---'+brz1 in list_True or brz2+'---'+brz2 in list_True:
+        if var_common_branding+'---'+var_common_branding in list_True or var_my_main_branding+'---'+var_my_main_branding in list_True:
             mes.new_mes(tx=u"Нельзя удалять\nдефолтный (для\nправки или сборки)\n брендинг",color='purple')
         else: 
             for x in list_True:    
@@ -1660,20 +1644,20 @@ def branding(wb=0,demo_mode=0,demo_mode2=0):
     page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/demo.png',t=u'Редактирование брендинга') 
     panel_action.hide()   
     br_is = 1   # индикатор для выбора между реальным редактированием брендинга и демо-режимом
-    if demo_mode == 0 and demo_mode2 == 0 and var_br_edit != '' and var_br_edit != 'club_branding':  # если не отмечен какой-либо брендинг
+    if demo_mode == 0 and demo_mode2 == 0 and var_br_edit != '' and var_br_edit != 'altlinux-club-small':  # если не отмечен какой-либо брендинг
         wb = 1    
     if wb == 0:   # редактировать брендинг по умолчанию или указанный пользователем
-        open_f (n=navigator_dir+'/brandings/main',out='work_branding') # узнаём из конфига основной брендинг
+        work_branding = var_my_main_branding 
         br_dir = brandings_dir+work_branding+'/branding' # каталог исходников брендинга
         br_dir0 = brandings_dir+work_branding # конфигурационный каталог брендинга        
         if work_branding == '':
             demo_mode = 1   # если нет активного брендинга, включаем демо-режим
         if demo_mode == 1:
             if demo_mode2 == 0:   # если демо-режим не включен ранее...
-                subprocess.call('cp -rf '+''+brandings_dir+'club_branding '+tmp_dir, shell=True) # ...копируем клубный брендинг в tmpfs
-            work_branding = 'club_branding'
-            br_dir = tmp_dir+'/club_branding/branding'
-            br_dir0 = tmp_dir+'/club_branding/'            
+                subprocess.call('cp -rf '+''+brandings_dir+'altlinux-club-small '+tmp_dir, shell=True) # ...копируем клубный брендинг в tmpfs
+            work_branding = 'altlinux-club-small'
+            br_dir = tmp_dir+'/altlinux-club-small/branding'
+            br_dir0 = tmp_dir+'/altlinux-club-small/'            
             but_new_branding = But(parent=panel_action,tx=u"Новый\nбрендинг",com=new_branding)
             br_is = 0
     else:
@@ -1770,7 +1754,7 @@ def branding(wb=0,demo_mode=0,demo_mode2=0):
             if demo_mode == 0: # если не демо-режим...
                 d = brandings_dir+work_branding+'/branding/images/' # ...работаем прямо с каталогом картинок брендинга 
             else:   # если демо-режим...
-                d = tmp_dir+'/distronavigator/club_branding/branding/images/' # ...вычисляем каталог в tmpfs
+                d = tmp_dir+'/distronavigator/altlinux-club-small/branding/images/' # ...вычисляем каталог в tmpfs
                 ch = subprocess.Popen('convert -sample 800x600 '+d+'background4x3.png '+d+'boot.png && convert -sample 800x600 '+d+'background4x3.png  '+d+'boot.jpg && rm -f '+d+'wallpaper.png '+d+'grub.png && cp -f '+d+'background4x3.png  '+d+'wallpaper.png && cp -f '+d+'boot.png  '+d+'grub.png',shell=True)  # применяем указанную юзером картинку ко всем заставкам
                 ch2 = ch.wait()
                 if ch2 == 0:
@@ -1792,7 +1776,7 @@ def branding(wb=0,demo_mode=0,demo_mode2=0):
             
     # Слайд-шоу инсталлера
     def slides():
-        sl1 = ''+brandings_dir+'club_branding/branding/slideshow/slide1.png'
+        sl1 = ''+brandings_dir+'altlinux-club-small/branding/slideshow/slide1.png'
         if subprocess.os.path.exists(br_dir+'/slideshow/slide1.png'): # проверяем, есть ли slide1 в активном брендинге...
             sl1 = br_dir+'/slideshow/slide1.png'
         subprocess.call('montage -geometry +0+0 -background transparent -tile 1 '+pics_dir+'/explan/slideshow.png ' +sl1+ ' ' +tmp_dir+'/mini2',shell=True)    # ...показываем его или slide1 из клубного брендинга
@@ -1880,12 +1864,10 @@ def branding(wb=0,demo_mode=0,demo_mode2=0):
         panel_action_show()        
             
     def headbands():        
-        open_f (n=navigator_dir+'/settings/headbands',out='o')
-        if o == 'True':
+        if var_headbands == 'True':
             choice_headbands()
-        else:
-            open_f (n=navigator_dir+'/brandings/headbands',out='o')    
-            if o == 'False':
+        else:  
+            if var_several_pics == 'False':
                 common_pic()
             else:
                 several_pic() 
@@ -1895,14 +1877,14 @@ def branding(wb=0,demo_mode=0,demo_mode2=0):
         page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/hbs2.png',t=u'Общая заставка или разные?')
         def one_pic():
             global var_headbands
-            open_f (n=navigator_dir+'/brandings/headbands',mode='w',tx='False')
-            open_f (n=navigator_dir+'/settings/headbands',mode='w',tx='False')
+            config_write (name='several_pics',value='False') 
+            config_write (name='headbands',value='False')                
             var_headbands = 'False'
             common_pic()
         def various_pic():
             global var_headbands
-            open_f (n=navigator_dir+'/brandings/headbands',mode='w',tx='True')
-            open_f (n=navigator_dir+'/settings/headbands',mode='w',tx='False')
+            config_write (name='several_pics',value='True') 
+            config_write (name='headbands',value='False')            
             var_headbands = 'False'
             several_pic()            
         but1 = But(parent=panel_action,com=common_pic,tx=u"Использовать\nобщую заставку")
@@ -1933,13 +1915,13 @@ def branding(wb=0,demo_mode=0,demo_mode2=0):
                
     def info():
         def write_info():
-            open_f (n='/usr/share/distronavigator/main/info',out='t2') # открываем шаблон (html)
+            open_f (n='/usr/share/distronavigator/for_brandings/info',out='t2') # открываем шаблон (html)
             s1=unicode(text1.toPlainText())
             s2=unicode(text2.toPlainText())
             s3=unicode(text3.toPlainText())            
             t5 = t2.replace('x1',s1).replace('x2',s2).replace('x3',s3) # вставляем туда то, что написал юзер
             if demo_mode == 1:
-                open_f (n=tmp_dir+'/club_branding/branding/notes/release-notes.ru.html.in',mode='w',tx=t5)
+                open_f (n=tmp_dir+'/altlinux-club-small/branding/notes/release-notes.ru.html.in',mode='w',tx=t5)
             else:
                 open_f (n=brandings_dir+work_branding+'/branding/notes/release-notes.ru.html.in',mode='w',tx=t5)
             info()
@@ -1948,7 +1930,7 @@ def branding(wb=0,demo_mode=0,demo_mode2=0):
         def example_info():
             page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/info2.png',t=u'Пример информации о дистрибутиве',i=1,expl_loc='main_area.setGeometry(0,440,780,100)',inter_loc='inter.setGeometry(0,40,780,380)')
             panel_action.hide()
-            tw = Tx_wind (source=navigator_dir+'/brandings/info',out='f2',h=350,w=600,x=30,y=20,font='Arial 11',dis=1,butt='')
+            tw = Tx_wind (source='/usr/share/distronavigator/for_brandings/info-example',out='f2',h=350,w=600,x=30,y=20,font='Arial 11',dis=1,butt='')
             demo_real()
             but1 = But(parent=panel_action,com=info,tx=u"Вернуться к своему\nдистрибутиву")
             panel_action.resize(174,75)           
@@ -1976,9 +1958,7 @@ def branding(wb=0,demo_mode=0,demo_mode2=0):
         
     # Очистка хашерницы
     def hasher_clean():
-        q = open(navigator_dir+'/settings/tmpfs_b')
-        open_f (n=navigator_dir+'/settings/tmpfs_b',out='q2')
-        if q2 == 'True':
+        if var_tmpfs_b == 'True':
             hasher_path = tmp_dir
         else:
             hasher_path = navigator_dir
@@ -2009,7 +1989,6 @@ def branding(wb=0,demo_mode=0,demo_mode2=0):
           if '#my_repo' in x:
               rep2 = x.replace('rpm file:','').replace(' #my_repo','').split(' ')  # находим первый в списке локальный дополнительный репозиторий
               break   
-      open_f (n=navigator_dir+'/main/branch',mode='w',tx=bran)
       for i in t2:
           if 'rpm' not in i:  # проверка, не забыл ли юзер указать репозитории для данного бранча
                 nn = 0
@@ -2065,21 +2044,19 @@ def branding(wb=0,demo_mode=0,demo_mode2=0):
                         ex(com = 'rpm -ts  branding.tar',mes_err='srpmbuild_err',signal='srpmbuild_start')      #  создание srpm
                     if next_command == True:    
                         hasher_run = True
-                        ex(com = 'hsh '+hasher_dir+'/hasher --no-sisyphus-check --lazy-cleanup '+' --target='+rep2[1]+' --repo='+rep2[0]+' '+apt_conf+' '+home_dir+'/RPM/SRPMS/branding-'+work_br_full+'.src.rpm',mes_err='rpmbuild_err',signal='rpmbuild_start')     #  сборка rpm-пакетов в хашернице
+                        ex(com = 'hsh '+hasher_dir+'/hasher --no-sisyphus-check --lazy-cleanup '+' --target='+rep2[1]+' --repo='+rep2[0]+' --apt-config='+tmp_dir+'/apt.conf '+home_dir+'/RPM/SRPMS/branding-'+work_br_full+'.src.rpm',mes_err='rpmbuild_err',signal='rpmbuild_start')     #  сборка rpm-пакетов в хашернице
                         hasher_run = False
                     if next_command == True:    
                         ex(com = 'genbasedir --topdir='+rep2[0]+' '+rep2[1]+' '+rep2[2],mes_err='genbasedir_err',signal='genbasedir_start')  #  обновление базы данных личного репозитория
                     
-            
             open_f (n=brandings_dir+work_branding+'/full_name',out='work_br_full')
-            open_f (n=navigator_dir+'/sources/local_net-'+bran,out='nl2')  #  сетевые или локальные репозитории этого бранча задействованы
+            where_repos()  #  сетевые или локальные репозитории этого бранча задействованы
             open_f (n=navigator_dir+'/sources/my_repos-'+bran,out='p2')
             if p2 == '':
                   mes.new_mes(tx=u"Похоже, не указаны\nрепозитории.\nПереходим туда,\nгде их можно указать",color='purple')
             else:
-                apt_conf = ' --apt-config='+navigator_dir+'/sources/apt.conf-'+nl2+'-'+bran+' '
-                open_f (n=navigator_dir+'/settings/tmpfs_b',out='th2')  #  использовать ли tmpfs для хашера
-                if th2 == 'True':
+                apt_conf_create()
+                if var_tmpfs_b == 'True':    #  использовать ли tmpfs для хашера
                     subprocess.call('mkdir -p '+tmp_dir+'/hasher', shell=True)   #  создание хашерницы в tmpfs
                     hasher_dir = tmp_dir
                 else:
@@ -2095,7 +2072,7 @@ def branding(wb=0,demo_mode=0,demo_mode2=0):
                 br_thread.start()     
     
     
-    if work_branding == 'club_branding':
+    if work_branding == 'altlinux-club-small':
         what_branding.setText(u'Секция брендинга\nв демо-режиме')
     else:
         what_branding.setText(u'брендинг :\n'+work_branding)  #  указываем, какой брендинг в разработке
@@ -2121,17 +2098,13 @@ def params():
     inter.layout = QVBoxLayout(inter)
     
     def mp_mpd_default(rb_name):
-        open_f(n=navigator_dir+'/main/mp_mpd',mode='w',tx=rb_name)
+        config_write(name='mp_mpd_work',value=rb_name)
     
-    def image_dir():
-        s = open(navigator_dir+'/main/images_dir')
-        i_dir = s.read().replace('--with-outdir=','')
-        s.close()         
-        if i_dir == '':
-            i_dir = navigator_dir+'/my_images'
-        im_dir = QFileDialog.getExistingDirectory(root, u'Каталог для готовых образов',navigator_dir+'/my_images')
-        if im_dir != () and  im_dir != '':                
-            open_f (n=navigator_dir+'/main/images_dir',mode='w',tx='--with-outdir='+im_dir)
+    def image_dir():  # указание каталога для готовых образов
+        global var_outdir         
+        var_outdir = QFileDialog.getExistingDirectory(root, u'Каталог для готовых образов',navigator_dir+'/my_images')
+        if var_outdir != () and  var_outdir != '':                
+            config_write (name='outdir',value=var_outdir)
         params()
                 
     what_branding.setText('') 
@@ -2140,7 +2113,7 @@ def params():
     par_tmpfs_d = Sett (n='tmpfs_d',var=var_tmpfs_d,tx=u'Собирать дистрибутивы в tmpfs')     
     par_nice = Sett (n='nice',var=var_nice,tx=u'Ограничить потребление ресурсов процессом сборки') 
     par_clean = Sett (n='clean',var=var_clean,tx=u'Очищать сборочницу после сборки дистрибутива')  
-    fr_mp_mpd = R_But(x=485,y=50,h=80,w=210,r_list=['mp---mkimage-profiles','mpd---mkimage-profiles-desktop'],parent=inter,func='mp_mpd_default',vis='line2[1]',checked=navigator_dir+'/main/mp_mpd')
+    fr_mp_mpd = R_But(x=485,y=50,h=80,w=210,r_list=['mp---mkimage-profiles','mpd---mkimage-profiles-desktop'],parent=inter,func='mp_mpd_default',vis='line2[1]',checked=var_mp_mpd_work)
     mp_mpd_label = Label(parent=inter,x=460,y=30,tx=u'Сборочная система по умолчанию').adjustSize()      
     panel_action.hide()
     but_images = But(parent=panel_action,tx=u"Указать каталог\nдля образов",com=image_dir)
@@ -2159,7 +2132,7 @@ def all_repos():
     
 # Выбор репозиториев для каждого бранча
 def main_repos():
-    global branch_var
+    global var_branch
     global local_net_switch
     global branch_commit
             
@@ -2175,45 +2148,46 @@ def main_repos():
             entry_club_repo.setText(repo_c)  # адрес клубного репозитория вписывается в соответствующее поле
 
     def mirror_com():  # обновляем файл со списком репозиториев
-        global branch_var
+        global var_branch
         main_repo= str(entry_main_repo.text()) 
         club_repo= str(entry_club_repo.text())                    # получаем введённые юзером адреса репозиториев
-        open_f (n=navigator_dir+'/sources/local_net-'+branch_var,out='n2') #  смотрим, локальные или сетевые репозитории у нас в нём задействованы
-        if n2 == 'local':        
-            subprocess.call ("sed -i -e '/#club_repo/crpm\ file:"+club_repo+" i686 hasher #club_repo' -e '/#main_repo_i/crpm\ file:"+main_repo+" i586 classic #main_repo_i' -e '/#main_repo_n/crpm\ file:"+main_repo+" noarch classic #main_repo_n' "+navigator_dir+"/sources/my_repos-"+branch_var,shell=True)  
+        if repos_seat == 'local':        
+            subprocess.call ("sed -i -e '/#club_repo/crpm\ file:"+club_repo+" i686 hasher #club_repo' -e '/#main_repo_i/crpm\ file:"+main_repo+" i586 classic #main_repo_i' -e '/#main_repo_n/crpm\ file:"+main_repo+" noarch classic #main_repo_n' "+navigator_dir+"/sources/my_repos-"+var_branch,shell=True)  
         else:
-            subprocess.call ("sed -i -e '/#club_repo/crpm\ "+club_repo+" i686 hasher #club_repo' -e '/#main_repo_i/crpm\ "+main_repo+" i586 classic #main_repo_i' -e '/#main_repo_n/crpm\ "+main_repo+" noarch classic #main_repo_n' "+navigator_dir+"/sources/my_repos-"+branch_var,shell=True)             # вписываем их в конфиг         
+            subprocess.call ("sed -i -e '/#club_repo/crpm\ "+club_repo+" i686 hasher #club_repo' -e '/#main_repo_i/crpm\ "+main_repo+" i586 classic #main_repo_i' -e '/#main_repo_n/crpm\ "+main_repo+" noarch classic #main_repo_n' "+navigator_dir+"/sources/my_repos-"+var_branch,shell=True)             # вписываем их в конфиг         
         mes.new_mes(tx=u'Список репозиториев\nобновлён')
         
-    def repos_show():        
-        open_f (n=navigator_dir+'/sources/my_repos-'+branch_var,out='p',sl='.splitlines()')  # смотрим файл со списком репозиториев
-        m_repo = p[0].replace('rpm file:','').replace('rpm  ftp://','').replace(' i586 classic #main_repo_i','').replace('#main_repo_i','')  # вырезаем то, что отображать не надо
-        c_repo = p[2].replace('rpm file:','').replace('rpm  ftp://','').replace(' i686 hasher #club_repo','').replace('#club_repo','')                                   
+    def repos_show(): 
+        subprocess.call('[ -e '+navigator_dir+'/sources/my_repos-'+var_branch+' ] || cp '+navigator_dir+'/sources/0 '+navigator_dir+'/sources/my_repos-'+var_branch,shell=True)       
+        open_f (n=navigator_dir+'/sources/my_repos-'+var_branch,out='p',sl='.splitlines()')  # смотрим файл со списком репозиториев
+        m_repo = p[0].replace('rpm file:','').replace('rpm ','').replace(' i586 classic #main_repo_i','').replace('#main_repo_i','')  # вырезаем то, что отображать не надо
+        c_repo = p[2].replace('rpm file:','').replace('rpm ','').replace(' i686 hasher #club_repo','').replace('#club_repo','')                                   
         entry_main_repo.setText(m_repo)  # вводим в них адреса репозиториев
         entry_club_repo.setText(c_repo)        
 
     def branch_commit(rb_name):  #  Переключение между бранчами для указания их репозиториев
-        global branch_var       
-        branch_var = rb_name
-        open_f (n=navigator_dir+'/main/branch',mode='w',tx=rb_name)   #  отметка о том, с каким бранчем работаем
-        open_f (n=navigator_dir+'/sources/local_net-'+rb_name,out='n2') #  смотрим, локальные или сетевые репозитории у нас в нём задействованы
-        eval(n2+'_rb.setChecked(True)')
+        global var_branch       
+        var_branch = rb_name
+        where_repos()  #  смотрим, локальные или сетевые репозитории у нас в нём задействованы
+        eval(repos_seat+'_rb.setChecked(True)')
         repos_show()        
         
     def local_net_switch(rb_name):      # сетевые или локальные репозитории использовать
-        global branch_var
-        open_f (n=navigator_dir+'/sources/local_net-'+branch_var,mode='w',tx=rb_name) # записываем в конфиг
+        global var_branch
+        global repos_seat
+        repos_seat = rb_name
+        subprocess.call("sed -i '/"+var_branch+"/c"+var_branch+" "+str(rb_name)+"' "+navigator_dir+"/sources/local_net",shell=True)  # записываем в конфиг      
         if  rb_name == 'net':
-            subprocess.call('cp -f '+navigator_dir+'/sources/my_repos-'+branch_var+' '+navigator_dir+'/sources/local_re-'+branch_var+' && cp -f '+navigator_dir+'/sources/net_re-'+branch_var+' '+navigator_dir+'/sources/my_repos-'+branch_var+'  > /dev/null 2>&1',shell=True)      # создаётся резервная копия локального варианта sources/my_repos*, после чего он заменяется файлом с указанием на сетевые репозитории указанного бранча
+            subprocess.call('[ -e '+navigator_dir+'/sources/net_re-'+var_branch+' ] || cp '+navigator_dir+'/sources/0 '+navigator_dir+'/sources/net_re-'+var_branch+' && cp -f '+navigator_dir+'/sources/my_repos-'+var_branch+' '+navigator_dir+'/sources/local_re-'+var_branch+' && cp -f '+navigator_dir+'/sources/net_re-'+var_branch+' '+navigator_dir+'/sources/my_repos-'+var_branch+'  > /dev/null 2>&1',shell=True)      # создаётся резервная копия локального варианта sources/my_repos*, после чего он заменяется файлом с указанием на сетевые репозитории указанного бранча
         if  rb_name == 'local':
-            subprocess.call('cp -f '+navigator_dir+'/sources/my_repos-'+branch_var+' '+navigator_dir+'/sources/net_re-'+branch_var+' && cp -f '+navigator_dir+'/sources/local_re-'+branch_var+' '+navigator_dir+'/sources/my_repos-'+branch_var+' > /dev/null 2>&1',shell=True)   # создаётся резервная копия сетевого варианта sources/my_repos*, после чего он заменяется файлом с указанием на локальные зеркала указанного бранча
+            subprocess.call('[ -e '+navigator_dir+'/sources/local_re-'+var_branch+' ] || cp '+navigator_dir+'/sources/0 '+navigator_dir+'/sources/local_re-'+var_branch+' && cp -f '+navigator_dir+'/sources/my_repos-'+var_branch+' '+navigator_dir+'/sources/net_re-'+var_branch+' && cp -f '+navigator_dir+'/sources/local_re-'+var_branch+' '+navigator_dir+'/sources/my_repos-'+var_branch+' > /dev/null 2>&1',shell=True)   # создаётся резервная копия сетевого варианта sources/my_repos*, после чего он заменяется файлом с указанием на локальные зеркала указанного бранча
         repos_show()   
 
     page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/main_repos.png',i=1,expl_loc='main_area.setGeometry(0,320,780,240)',inter_loc='inter.setGeometry(0,40,780,260)',t=u'Указание основных репозиториев')
-    open_f (n=navigator_dir+'/main/branch',out='branch_var')  # репозитории какого бранча указываются
+    where_repos()
     fr_branches = R_But(x=35,y=60,h=140,w=70,parent=inter,r_list=branches,func='branch_commit',vis='line2[1]')
-    eval(branch_var+'_rb.setChecked(True)')
-    fr_loc_net = R_But(x=110,y=60,h=120,w=340,r_list=[u'local---Использовать локальное зеркало бранча',u'net---Использовать сетевые репозитории'],checked=navigator_dir+'/sources/local_net-'+branch_var,parent=inter,func='local_net_switch',vis='line2[1]')
+    eval(var_branch+'_rb.setChecked(True)')
+    fr_loc_net = R_But(x=110,y=60,h=120,w=340,r_list=[u'local---Использовать локальное зеркало бранча',u'net---Использовать сетевые репозитории'],parent=inter,checked=repos_seat,func='local_net_switch',vis='line2[1]')
     entry_main_repo = Entry(x=460,y=60,width=260)
     entry_club_repo = Entry(x=460,y=120,width=260)
     main_repo_label = Label(parent=inter,x=500,y=40,tx=u'Основной репозиторий')
@@ -2250,7 +2224,7 @@ def addon_repos():
                 subprocess.call('sed -i "$ a rpm\ file:'+entry_1.text()+' '+entry_2.text()+' '+entry_3.text()+' #'+entry_1.text().replace('/','_')+'#my_repo" '+navigator_dir+'/sources/*_re*',shell=True)
                 addon_repos()
         else:
-            subprocess.call('sed -i "$ a rpm\ '+entry_1.text()+' '+entry_2.text()+' '+entry_3.text()+' #'+entry_1.text().replace('/','_')+'#my_repo" '+navigator_dir+'/sources/*_re*',shell=True)                                            
+            subprocess.call('sed -i "$ a rpm\ '+entry_1.text()+' '+entry_2.text()+' '+entry_3.text()+' #'+entry_1.text().replace('/','_')+'#my_repo" '+navigator_dir+'/sources/*',shell=True)                                            
             addon_repos()            
 
           
@@ -2264,7 +2238,7 @@ def addon_repos():
             if n.returncode != 0:
                 mes.new_mes(tx=u"Создать репозиторий\nне удалось",color='red') 
             else:                
-                subprocess.call('sed -i "$ a rpm\ file:'+entry_1.text()+' '+entry_2.text()+' '+entry_3.text()+' #'+entry_1.text().replace('/','_')+'#my_repo" '+navigator_dir+'/sources/*re*',shell=True)
+                subprocess.call('sed -i "$ a rpm\ file:'+entry_1.text()+' '+entry_2.text()+' '+entry_3.text()+' #'+entry_1.text().replace('/','_')+'#my_repo" '+navigator_dir+'/sources/*',shell=True)
                 addon_repos()
          
     def my_other_repo(rb_name):
@@ -2275,16 +2249,16 @@ def addon_repos():
         if my_r == '':
             mes.new_mes(tx=u"Репозиторий\nне выбран",color='purple')
         else:
-            subprocess.call('sed -i -e "/#'+my_r.replace('dott','.')+'#my_repo/d" '+navigator_dir+'/sources/*re*',shell=True)
+            subprocess.call('sed -i -e "/#'+my_r.replace('dott','.')+'#my_repo/d" '+navigator_dir+'/sources/*',shell=True)
             addon_repos()
                      
     open_f (navigator_dir+'/sources/my_repos-t7',out='rep2',sl='.splitlines()')
     my_repos_list = []
     list2 = [] 
     my_r = ''  # какой репозиторий отмечен для отключения
-    for x in rep2:              
+    for x in rep2:            
         if x.endswith('#my_repo'):
-            my_repos_list.append (x.replace('rpm file:','').replace('#my_repo','').replace('rpm ftp://','').split(' '))   
+            my_repos_list.append (x.replace('rpm file:','').replace('#my_repo','').replace('rpm ftp://','').split(' ')) 
     for x in my_repos_list:
         list2.append(x[0].replace('/','_').replace('.','dott')+'---'+x[0])
     fr_my_repos = R_But(x=35,y=60,h=190,w=420,parent=inter,r_list=list2,func='my_other_repo',vis="line2[1]")
@@ -2305,19 +2279,19 @@ def mk_repo_0():
     mk_repo(my_r='')  
     
 def edit_repos_list():  # правка списка репозиториев вручную        
-    global branch_var
+    global var_branch
     global insert_text
     page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/edit_repos_list.png',i=1,expl_loc='main_area.setGeometry(0,320,780,230)',inter_loc='inter.setGeometry(0,40,780,270)',t=u'Ручная правка списка репозиториев')
-    insert_text = Label (parent=main_area,x=163,y=97,tx=branch_var+'                     '+navigator_dir+'/sources/my_repos-'+branch_var)
-    tw = Tx_wind (source=navigator_dir+'/sources/my_repos-'+branch_var,out='r_list',h=212,w=695,x=20,y=40,font='Arial 12',del_end=True,mess=u'Список репозиториев\nобновлён')
+    insert_text = Label (parent=main_area,x=163,y=97,tx=var_branch+'                     '+navigator_dir+'/sources/my_repos-'+var_branch)
+    tw = Tx_wind (source=navigator_dir+'/sources/my_repos-'+var_branch,out='r_list',h=212,w=695,x=20,y=40,font='Arial 12',del_end=True,mess=u'Список репозиториев\nобновлён')
     but_main_r = But(parent=panel_action,com=main_repos,tx=u"Назад")
     panel_action.resize(174,75)     
 
 # Восстановление сборочницы в первоначальном виде
 def null():
-    page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/empty_'+mp_mpd+'.png',t=u'Сброс')
+    page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/empty_'+var_mp_mpd_work+'.png',t=u'Сброс')
     def restor_part():
-        n = subprocess.Popen('tar xf /usr/share/distronavigator/mpd.tar.gz -C '+tmp_dir+' && cp -rf '+build_dir+'/Makefile.in '+tmp_dir+'/mpd && cp -rf '+build_dir+'/configure.ac '+tmp_dir+'/mpd && cp -rf '+build_dir+'/profiles/pkg/lists/*  '+tmp_dir+'/mpd/profiles/pkg/lists  &&  cp -rf '+build_dir+'/profiles/pkg/groups/*  '+tmp_dir+'/mpd/profiles/pkg/groups  &&     rm -rf '+build_dir+' && mv  '+tmp_dir+'/mpd '+navigator_dir, shell=True)
+        n = subprocess.Popen('tar xf /usr/share/distronavigator/mpd.tar.gz -C '+tmp_dir+' && cp -rf '+build_dir+'/Makefile.in '+tmp_dir+'/mpd && cp -rf '+build_dir+'/use.mk.in '+tmp_dir+'/mpd && cp -rf '+build_dir+'/configure.ac '+tmp_dir+'/mpd && cp -rf '+build_dir+'/profiles/pkg/lists/*  '+tmp_dir+'/mpd/profiles/pkg/lists  &&  cp -rf '+build_dir+'/profiles/pkg/groups/*  '+tmp_dir+'/mpd/profiles/pkg/groups  &&     rm -rf '+build_dir+' && mv  '+tmp_dir+'/mpd '+navigator_dir, shell=True)
         n.wait()   # перенос проектов из старой сборочницу в новую и удаление старой
         if n.returncode == 0:
             mes.new_mes(tx=u"Сборочная система -\nв первоначальном виде.\nВаши проекты \nсохранены")
@@ -2341,8 +2315,8 @@ def set_gui():
     inter.layout = QVBoxLayout(inter)
     what_branding.setText('')                                       
     ch_baseprojects = Sett (n='baseprojects',var=var_baseprojects,tx=u'Возможность сборки не только своих, но и базовых дистрибутивов')
-    ch_brandings_use = Sett (n='brandings_use',var=var_brandings_use,tx=u'Показывать страницу выбора брендингов для использования')
-    ch_brandings_edit = Sett (n='brandings_edit',var=var_brandings_edit,tx=u'Показывать страницу выбора брендингов для редактирования')
+    ch_branding_use = Sett (n='branding_use',var=var_branding_use,tx=u'Показывать страницу выбора брендингов для использования')
+    ch_branding_edit = Sett (n='branding_edit',var=var_branding_edit,tx=u'Показывать страницу выбора брендингов для редактирования')
     ch_headbands = Sett (n='headbands',var=var_headbands,tx=u'Предлагать выбор между общей заставкой и разными')
     ch_expls = Sett (n='expls',var=var_expls,tx=u'Показывать пояснения')
     ch_popup = Sett (n='popup',var=var_popup,tx=u'Показывать подсказки к кнопкам')
@@ -2395,20 +2369,14 @@ def main_page():
 
 ##################### Основа программы #####################
 
-# Настройка программы соответственно конфигам
-for z in ['set','params']:
-    open_f (n=navigator_dir+'/settings/list_'+z,out='b',sl='.splitlines()')
-    for x in b:                           # ...для каждой из них ....
-        exec eval('''"var_"+x+" = ''"''') in globals(),locals()          # ...  создаём свою переменную.....
-        open_f (n=navigator_dir+'/settings/'+x,out='y')
-        exec eval("'var_'+x+'=y'")in globals(), locals()  # .... и записываем в неё из конфига статус опции
-
-open_f(n=navigator_dir+'/main/src_branding',out='src_branding_is')
+open_f (n=navigator_dir+'/settings',out='b',sl='.splitlines()')  # настройка программы соответственно конфигам
+for x in b:                           # ...для каждой из пользовательских опций ...
+    exec eval("'var_'+x.split(' ')[0]+'= x.split(' ')[1]'")in globals(), locals()  # ...создаём переменную и и записываем в неё из конфига статус опции
 app = QApplication(sys.argv)
 root = QMainWindow() #  создаём окно программы
 root.move(50,80)  #  задаём его размеры и расположение на экране
 root.setFixedSize(960,560)
-icon_pic = QPixmap()   # показываем пояснения, если велено
+icon_pic = QPixmap() 
 icon_pic.load('/usr/share/distronavigator/distronavigator.png')
 icon = QIcon(icon_pic)
 app.setWindowIcon(icon)
@@ -2461,20 +2429,14 @@ browser_ch()
 brand = ''  # выбранный юзером брендинг
 choice_project = '' # указывает, пользовательский или базовый дистрибутив будет собираться
 observer = Observ()  # наблюдение за процессом сборки
-open_f (n=navigator_dir+'/main/mp_mpd',out='mp_mpd')
-but_mp_mpd = QPushButton(u"",parent=root,text=mp_mpd)  # кнопка переключения сборочниц
+but_mp_mpd = QPushButton(u"",parent=root,text=var_mp_mpd_work)  # кнопка переключения сборочниц
 but_mp_mpd.setGeometry(910, 525, 48, 33)
 but_mp_mpd.clicked.connect(mp_mpd_switch)
 mp_mpd_choice() 
-# Настройка программы под проект, который активен по умолчанию
-open_f (n=conf_dir+'/default_project',out='default_project')  # определяем проект по умолчанию
-project = 'none'   # заглушка на случай отсутствия такового
-d = subprocess.os.path.exists(conf_dir+'/projects/'+default_project)  # проверяем его наличие 
-if d == True:
-    project = default_project # устанавливаем проект по умолчанию
-hasher()  # проверяем право юзера использовать hasher
+project = eval('var_'+var_mp_mpd_work+'_default_project') # устанавливаем проект по умолчанию
 if var_mp_mpd_choice == 'True':
     but_mp_mpd.show()
+hasher()  # проверяем право юзера использовать hasher    
 main_page()
 sys.exit(app.exec_())
 

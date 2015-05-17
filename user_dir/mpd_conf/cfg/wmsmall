@@ -1,8 +1,0 @@
-                                     wmsmall--branch-*)
-					INSTALLER=${with_installer:-"club"}
-					BRANDING=${with_branding:-"club-small"}
-					APTCONF_PACKAGE="branch"
-					with_nvidia="nvidia"
-					NODOCS="#"
-					LABEL="WMSmall"
-					DEFAULT_ISO=${with_image:-"wmsmall--branch-.cd"};;
