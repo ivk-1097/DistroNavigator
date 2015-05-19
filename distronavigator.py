@@ -22,7 +22,7 @@ home_dir = pwd.getpwuid(subprocess.os.getuid())[ 5 ]  # ... и адрес его
 navigator_is = subprocess.os.path.exists(home_dir+'/.distronavigator')   # выясняем, существует ли конфигурационный каталог программы
 navigator_dir = home_dir+'/.distronavigator'
 if navigator_is == False:
-    subprocess.call('tar -xf /usr/share/distronavigator/.distronavigator.tar.gz -C '+home_dir+' && tar -xf /usr/share/distronavigator/mpd.tar.gz -C '+navigator_dir+' && tar -xf /usr/share/distronavigator/mp.tar.gz -C '+navigator_dir+' && sed -i -e "s!user!'+user+'!g" '+navigator_dir+'/sources/* -e "s!homedir!'+home_dir+'!g" '+navigator_dir+'/settings && mkdir -p '+navigator_dir+'/repo/i586/RPMS.hasher '+navigator_dir+'/repo/SRPMS.hasher '+navigator_dir+'/repo/i586/base && genbasedir --topdir='+navigator_dir+'/repo i586 hasher',shell=True)  # если его нет, то создаём его - и прописываем путь к нему в некоторых файлах, а также создаём личный репозиторий
+    subprocess.call('tar -xf /usr/share/distronavigator/user_dir.tar.gz -C '+home_dir+' && tar -xf /usr/share/distronavigator/mpd.tar.gz -C '+navigator_dir+' && tar -xf /usr/share/distronavigator/mp.tar.gz -C '+navigator_dir+' && sed -i -e "s!user!'+user+'!g" '+navigator_dir+'/sources/* -e "s!homedir!'+home_dir+'!g" '+navigator_dir+'/settings && mkdir -p '+navigator_dir+'/repo/i586/RPMS.hasher '+navigator_dir+'/repo/SRPMS.hasher '+navigator_dir+'/repo/i586/base && genbasedir --topdir='+navigator_dir+'/repo i586 hasher',shell=True)  # если его нет, то создаём его - и прописываем путь к нему в некоторых файлах, а также создаём личный репозиторий
 tmp_dir = '/tmp/.private/'+user+'/distronavigator'   # каталог программы в tmpfs
 pics_dir = '/usr/share/distronavigator/pics'
 brandings_dir = navigator_dir+'/brandings/' 
@@ -233,10 +233,12 @@ class Tx_wind (QTextEdit):
 
 # Однострочное поле             
 class Entry (QLineEdit):
-    def __init__(self,x,y,width=200,height=20):
+    def __init__(self,x,y,width=200,height=20,hint=''):
         super(Entry, self).__init__(parent=inter)        
         self.setGeometry(x,y,width,height)
         self.show() 
+        if hint != '':  # если есть подсказка, то показываем её
+            self.setToolTip(u'<table width="250"><tr><td ALIGN=CENTER>'+hint+'</td></tr></table>')         
          
 # Пояснительная надпись        
 class Label (QLabel):
@@ -247,12 +249,14 @@ class Label (QLabel):
         
 # Пункт в настройках сборочницы или программы
 class Sett (QCheckBox):
-    def __init__(self,tx='',n='',var=''):
-        exec ("def "+n+"(var=var):\n global var_"+n+"\n global var_expls\n global var_mp_mpd_choice\n global set_par\n subprocess.call ('sed -i /"+n+"/c"+n+"\ '+str(var)+' "+navigator_dir+"/settings',shell=True)\n var_"+n+" = str(var)\n if var_expls=='False':\n  tes = Pic(im='/usr/share/distronavigator/pics/explan/empty.png',x=20,y=80)\n elif set_par=='set':\n  Pic(im='/usr/share/distronavigator/pics/explan/set.png',x=0,y=130)\n if var_mp_mpd_choice=='True':\n  but_mp_mpd.show()\n else:\n  but_mp_mpd.hide()\n   ") in globals(), locals()  # создаём функцию, запускаемую при активации/деактивации пункта
-        super(Sett, self).__init__(parent=inter,text=tx)  # создаём сам пункт 
-        self.setChecked(eval(var))  # активируем, если велено
-        inter.layout.addWidget(self)  # размещаем
+    def __init__(self,tx='',n='',var='',hint=''):
+        exec ("def "+n+"(var=var,z=n):\n global var_"+n+"\n global var_expls\n global var_mp_mpd_choice\n global set_par\n subprocess.call ('sed -i /"+n+"/c"+n+"\ '+str(var)+' "+navigator_dir+"/settings',shell=True)\n var_"+n+" = str(var)\n if var_expls=='False':\n  tes = Pic(im='/usr/share/distronavigator/pics/explan/empty.png',x=20,y=80)\n elif set_par=='set':\n  Pic(im='/usr/share/distronavigator/pics/explan/set.png',x=0,y=130)\n if var_mp_mpd_choice=='True':\n  but_mp_mpd.show()\n else:\n  but_mp_mpd.hide()\n if z=='tmpfs_d':\n  entry_build_root.setDisabled (eval(var_tmpfs_d))   ") in globals(), locals()  # создаём функцию, запускаемую при активации/деактивации пункта
+        super(Sett, self).__init__(parent=fr_settings,text=tx)  # создаём сам пункт 
+        self.setChecked(eval(var))  # активируем, если велено        
+        fr_settings.layout.addWidget(self)  # размещаем
         self.clicked.connect(eval(n))  # подключаем его к вышеупомянутой функции
+        if hint != '':  # если есть подсказка, то показываем её
+            self.setToolTip(u'<table width="250"><tr><td ALIGN=CENTER>'+hint+'</td></tr></table>') 
         
 # Отслеживание процесса сборки (дистрибутива или пакетов брендинга) 
 class Observ(QObject):
@@ -386,7 +390,8 @@ def mp_mpd_choice():
     global for_dir
     global base_distros
     global project
-    global default_project    
+    global default_project
+    global lists_dir         
     build_dir = navigator_dir+'/'+var_mp_mpd_work
     conf_dir = navigator_dir+'/'+var_mp_mpd_work+'_conf'
     for_dir = '/usr/share/distronavigator/for_'+var_mp_mpd_work 
@@ -394,6 +399,10 @@ def mp_mpd_choice():
     base_distros =  eval('base_distros_'+var_mp_mpd_work)
     default_project = eval('var_'+var_mp_mpd_work+'_default_project')
     project = default_project # устанавливаем проект по умолчанию 
+    if var_mp_mpd_work == 'mp':
+        lists_dir = build_dir+'/pkg.in/lists/'
+    else:
+        lists_dir = build_dir+'/profiles/pkg/lists/'
     actproject()
     colors()
     main_page()
@@ -407,7 +416,7 @@ def actproject():
     global pr_branding
     global pr_groups
     global pr_config
-    global pr_live_install      
+    global pr_live_install     
     pr_config = conf_dir+'/projects/'+project  #  определяем конфиг проекта
     open_f (n=pr_config,out='c',sl='.splitlines()')  # читаем его
     pr_shortname = c[0]  # краткое условное имя проекта
@@ -428,14 +437,12 @@ def colors():
     app.setStyleSheet("QCheckBox:hover { background-color: 3333ff }")
     if var_mp_mpd_work == 'mpd':
         main_color.setColor(QPalette.Window, QColor("#e9fbd5")) #  основной цвет
-        app.setStyleSheet("But {background-color:'#dbfbb9'} But:hover { background-color: #aeffb1 } But[evil='true'] {background-color:'#ff4444'} But[evil='true']:hover {background-color:'#ff0000'} QGroupBox { border:0px } R_But {background-color:#e9fbd5} QScrollArea, R_But, CheckBox_Group {background-color:#e9fbd5} QScrollArea {border:0px}") 
+        app.setStyleSheet("But {background-color:'#dbfbb9'} But:hover { background-color: #aeffb1 } But[evil='true'] {background-color:'#ff4444'} But[evil='true']:hover {background-color:'#ff0000'} QGroupBox { border:0px } R_But {background-color:#e9fbd5} QScrollArea, R_But, CheckBox_Group {background-color:#e9fbd5} QScrollArea {border:0px} QPushButton {background-color:'#e9fbd5'}") 
         button_re.setStyleSheet("QPushButton {background-color:'#dbfbb9'} QPushButton:hover { background-color: #aeffb1 } ")
-        but_mp_mpd.setStyleSheet("QPushButton {background-color:'#e9fbd5'} QPushButton:hover { background-color: #b4ee6f } ")
     else:
         main_color.setColor(QPalette.Window, QColor("#eeeff7")) #  основной цвет
-        app.setStyleSheet("But {background-color:'#b9d5fb'} But:hover { background-color: #aeb2ff } But[evil='true'] {background-color:'#ff4444'} But[evil='true']:hover {background-color:'#ff0000'} QGroupBox { border:0px } R_But {background-color:#eeeff7} QScrollArea, R_But, CheckBox_Group {background-color:#eeeff7} QScrollArea {border:0px}") 
-        button_re.setStyleSheet("QPushButton {background-color:'#b9d5fb'} QPushButton:hover { background-color: #aeb2ff } ") 
-        but_mp_mpd.setStyleSheet("QPushButton {background-color:'#eeeff7'} QPushButton:hover { background-color: #8eb0fd } ")   
+        app.setStyleSheet("But {background-color:'#b9d5fb'} But:hover { background-color: #aeb2ff } But[evil='true'] {background-color:'#ff4444'} But[evil='true']:hover {background-color:'#ff0000'} QGroupBox { border:0px } R_But {background-color:#eeeff7} QScrollArea, R_But, CheckBox_Group {background-color:#eeeff7} QScrollArea {border:0px} QPushButton {background-color:'#eeeff7'}") 
+        button_re.setStyleSheet("QPushButton {background-color:'#b9d5fb'} QPushButton:hover { background-color: #aeb2ff } ")   
     root.setPalette(main_color)
     top_but_equal()
 
@@ -444,7 +451,7 @@ def restor():
     global project
     project = 'none'  # не должно быть в это время активного проекта
     config_write (name='mpd_default_project',value='none') # ...и дефолтного тоже
-    i = subprocess.Popen('tar -xf /usr/share/distronavigator/.distronavigator.tar.gz -C '+tmp_dir+' && cp -rf '+tmp_dir+'/.distronavigator/mpd_conf -C '+conf_dir+' && tar xf /usr/share/distronavigator/mpd.tar.gz -C '+navigator_dir,shell = True)
+    i = subprocess.Popen('tar -xf /usr/share/distronavigator/user_dir.tar.gz -C '+tmp_dir+' && cp -rf '+tmp_dir+'/.distronavigator/mpd_conf -C '+conf_dir+' && tar xf /usr/share/distronavigator/mpd.tar.gz -C '+navigator_dir,shell = True)
     i.wait()  # удаляем каталог m-p-d и заменяем его "нулёвым", удаляем ещё списки проектов.
     if i.returncode == 0:
         mes.new_mes(tx=u'Сборочная система\nвосстановлена в\nпервоначальном виде')
@@ -633,7 +640,7 @@ def projects(tr=0):
                     subprocess.call("sed -i '9s/PRODUCTS = /PRODUCTS = "+new+" /' "+build_dir+'/Makefile.in',shell=True)  # ...и его основное имя вносится туда же (в список PRODUCTS) 
                     subprocess.call ("sed -n '/"+par_2+"\*/,/"+par_2+".cd/p' "+build_dir+"/configure.ac > "+tmp_dir+"/cfg && sed -i -e '1s/"+par_2+"/"+new_short+"/' -e '$s/"+par_2+"/"+new_short+"/I' -e '/LABEL/s/"+par_2+"/"+new_short+"/I' "+tmp_dir+"/cfg && sed -i '50r "+tmp_dir+"/cfg' "+build_dir+"/configure.ac",shell=True)   # на основе секции родительского проекта в configure.ac создаётся секция нового проекта               
                     subprocess.call("sed -i -e '24s/use-gdm  /use-gdm  "+new_short+' '+new_short+'-main '" /' "+build_dir+"/use.mk.in", shell=True) # вписываем новый проект в use.mk.in
-                    subprocess.call('touch '+build_dir+'/profiles/pkg/lists/'+new_short+' '+conf_dir+'/projects/'+new+'-groups && ln -s '+build_dir+'/profiles/pkg/lists/'+new_short+' '+build_dir+'/profiles/pkg/lists/'+new_short+'-main > /dev/null 2>&1',shell=True) # создаём нужные для проекта файлы 
+                    subprocess.call('[ -e '+lists_dir+s0[0]+' ] || cp '+lists_dir+par_2+'-t7 '+lists_dir+s0[0]+' && touch '+lists_dir+new_short+' '+conf_dir+'/projects/'+new+'-groups && ln -s '+lists_dir+new_short+' '+lists_dir+new_short+'-main > /dev/null 2>&1',shell=True) # создаём нужные для проекта файлы 
                     if instal_live.currentIndex() in [0,2]:
                         distro_type = 'install'
                     elif instal_live.currentIndex() in [1,3]:
@@ -652,7 +659,7 @@ def projects(tr=0):
                         use1 = use0.replace('project',new_short).replace('prof_string',' '.join(prof_list)).replace('mark',new +'-live')
                         open_f (n=tmp_dir+'/ul',mode='w',tx=use1)
                         subprocess.call('cat '+tmp_dir+'/ul >> '+build_dir+'/use.mk.in', shell=True)
-                        subprocess.call('touch '+build_dir+'/profiles/pkg/lists/'+new_short+'-live',shell=True)
+                        subprocess.call('touch '+lists_dir+new_short+'-live',shell=True)
                     projects()           
         
         def src_f(rb_name): 
@@ -742,8 +749,8 @@ def projects(tr=0):
                     open_f (n=conf_dir+'/projects/'+x+'-groups',out='grs',sl='.splitlines()')
                     for g in grs:
                         g2 = g.split("---")[0]
-                        subprocess.call("rm -rf "+build_dir+"/profiles/pkg/lists/"+x_0+"-"+g2+" "+build_dir+"/profiles/pkg/groups/"+x_0+"-"+g2+".directory",shell=True)  # удаляем файлы групп пакетов проекта (если есть)                    
-                    subprocess.call("rm -rf "+conf_dir+'/projects/'+x+" "+conf_dir+'/projects/'+x+"-groups "+build_dir+"/profiles/pkg/lists/"+x_0+" "+build_dir+"/profiles/pkg/lists/"+x_0+"-main && "+ "sed -i -e \'/"+x+": | /d\' -e \'10s/"+x+"//\' "+build_dir+"/Makefile.in",shell=True)  # удаляем каталог проекта, его pkglist, шаблон, записи в Makefile.in
+                        subprocess.call("rm -rf "+lists_dir+x_0+"-"+g2+" "+build_dir+"/profiles/pkg/groups/"+x_0+"-"+g2+".directory",shell=True)  # удаляем файлы групп пакетов проекта (если есть)                    
+                    subprocess.call("rm -rf "+conf_dir+'/projects/'+x+" "+conf_dir+'/projects/'+x+"-groups "+lists_dir+x_0+" "+lists_dir+x_0+"-main && "+ "sed -i -e \'/"+x+": | /d\' -e \'10s/"+x+"//\' "+build_dir+"/Makefile.in",shell=True)  # удаляем каталог проекта, его pkglist, шаблон, записи в Makefile.in
                 open_f (n=conf_dir+'/hid_projects',mode='w',tx='\n'.join(list_False)+'\n')  #  переписывается файл-список скрытых проектов
                 if list_False == []:
                     open_f (n=conf_dir+'/hid_projects',mode='w',tx='')
@@ -759,7 +766,7 @@ def projects(tr=0):
             but_del_projects = But(parent=panel_action,com=del_projects,tx=u'Удалить\nуказанные проекты')
             but_no_del = But(parent=panel_action,com=no_del,tx=u'Ничего\nне делать')
             panel_action_show()
-            fr_trash = CheckBox_Group (lists=[(conf_dir+'/hid_projects','False')],h=300,w=200)
+            fr_trash = CheckBox_Group (lists=[(conf_dir+'/hid_projects','False')],h=230,w=600)
                                                                      
          # Показ всех проектов                  
         fr_all_projects = CheckBox_Group (lists=([conf_dir+'/work_projects','True'],[conf_dir+'/hid_projects','False']),x=480,y=20,h=300,w=250)
@@ -875,13 +882,13 @@ def projects(tr=0):
                             subprocess.call('mkdir -p '+tmp_dir+'/mkimage-work-dir',shell=True) 
                             ex(com = make_str,mes_err='make_err',make=True,signal='make_start')          # выполняем его сборку
                     else:  # если сборка производится в m-p
-                        ex(com ='BUILDLOG='+build_dir+'/build.log IMAGEDIR='+outdir+' APTCONF='+tmp_dir+'/apt.conf make '+distr, mes_err='make_err',make=True,signal='mp_make_start')                      
+                        ex(com ='BUILDLOG='+build_dir+'/build.log IMAGEDIR='+var_outdir+' APTCONF='+tmp_dir+'/apt.conf make '+distr, mes_err='make_err',make=True,signal='mp_make_start')                      
             nn = 1          
             open_f (n=navigator_dir+'/sources/my_repos-'+var_branch,out='t2',sl='.splitlines()')          
             for i in t2:
                 if 'rpm' not in i:   #  проверка, не забыл ли юзер указать репозитории для данного бранча
                     nn = 0
-            if nn == 05:
+            if nn == 0:
                 all_repos() # переход на страницу указания репозиториев
                 top_params.re_color()
                 mes.new_mes(tx=u"Похоже, не указаны\nрепозитории.\nПереходим туда,\nгде их можно указать",color='purple')
@@ -900,12 +907,13 @@ def projects(tr=0):
                     str_branding = '--with-branding='+pr_branding  # ...выясняем иначе
                 configure_str = './configure '+str_branding+' --with-outdir='+var_outdir+' --with-distro='+distr+branc+' --with-aptconf='+tmp_dir+'/apt.conf >> build.log 2>&1' # строка запуска configure
                 nice19 = ''
-                use_tmpfs = '' 
+                use_tmpfs = eval ("'TMP='+var_"+var_mp_mpd_work+"_build_root")
                 if var_nice == 'True':  # ограничение жадности
                     nice19 = 'nice -n 19'
                 if var_tmpfs_d == 'True':
-                    use_tmpfs = 'TMP='+tmp_dir+'/mkimage-work-dir'                    
+                    use_tmpfs = 'TMP='+tmp_dir+'/mkimage-work-dir'
                 make_str = use_tmpfs+' '+nice19+' make '+distr+' >> build.log 2>&1' # строка запуска сборки дистрибутива
+                print make_str
                 but_break_mk_distro.show()
                 but_log.show()
                 panel_log.resize(174,75)
@@ -1023,7 +1031,7 @@ def pkglists():
                 global tw
                 panel_action.hide()
                 if var_mp_mpd_work == 'mpd':               
-                    tw = Tx_wind (source=build_dir+'/profiles/pkg/lists/'+pr_shortname,out='file_text',h=240,w=400,x=250,y=3,font='Arial 14',mess=u'Список пакетов\nобновлён')
+                    tw = Tx_wind (source=lists_dir+pr_shortname,out='file_text',h=240,w=400,x=250,y=3,font='Arial 14',mess=u'Список пакетов\nобновлён')
                 else:
                     tw = Tx_wind (source=build_dir+'/pkg.in/lists/nav/'+pr_shortname.replace('.iso',''),out='file_text',h=240,w=400,x=250,y=3,font='Arial 14',mess=u'Список пакетов\nобновлён')                    
                 tw_d = 1
@@ -1039,10 +1047,10 @@ def pkglists():
                 panel_action.hide()
                 a = ''
                 if var_mp_mpd_work == 'mpd':                
-                    e = subprocess.os.path.exists(build_dir+'/profiles/pkg/lists/'+pr_parent+'-'+pr_branch+'.in')
+                    e = subprocess.os.path.exists(lists_dir+pr_parent+'-'+pr_branch+'.in')
                     if e == True:
                         a = '.in'               
-                    tw = Tx_wind (source=build_dir+'/profiles/pkg/lists/'+pr_parent.replace('-t6','').replace('-p6','').replace('-t7','').replace('-p7','')+'-'+pr_branch+a,out='file_text',h=240,w=400,x=250,y=3,font='Arial 14',mess=u'Список пакетов\nобновлён')
+                    tw = Tx_wind (source=lists_dir+pr_parent.replace('-t6','').replace('-p6','').replace('-t7','').replace('-p7','')+'-'+pr_branch+a,out='file_text',h=240,w=400,x=250,y=3,font='Arial 14',mess=u'Список пакетов\nобновлён')
                 else:
                     tw = Tx_wind (source=build_dir+'/pkg.in/lists/nav/'+pr_parent.replace('-t6','').replace('-p6','').replace('-t7','').replace('-p7','').replace('.iso','')+'-'+pr_branch+a,out='file_text',h=240,w=400,x=250,y=3,font='Arial 14',mess=u'Список пакетов\nобновлён')    
                 tw_d = 1
@@ -1054,12 +1062,12 @@ def pkglists():
                 def live_re():
                     live_pkglist()
                 page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/live.png',i=1,expl_loc='main_area.setGeometry(0,460,780,80)',inter_loc='inter.setGeometry(0,40,780,420)',t=u'Живой диск')                         
-                tw = Tx_wind (source=build_dir+'/profiles/pkg/lists/live-'+pr_branch+'.in',out='file_text',h=330,w=400,x=250,y=3,font='Arial 14',mess=u'Список пакетов\nобновлён')
+                tw = Tx_wind (source=lists_dir+'live-'+pr_branch+'.in',out='file_text',h=330,w=400,x=250,y=3,font='Arial 14',mess=u'Список пакетов\nобновлён')
                 but2 = But(parent=panel_action,com=live_re,tx=u"Ваши дополнения\nк списку пакетов")
                 panel_action.resize(174,75)
             page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/live.png',i=1,expl_loc='main_area.setGeometry(0,460,780,80)',inter_loc='inter.setGeometry(0,40,780,420)',t=u'Живой диск') 
             panel_action.hide()              
-            tw = Tx_wind (source=build_dir+'/profiles/pkg/lists/'+pr_shortname+'-live',out='file_text',h=330,w=400,x=250,y=3,font='Arial 14',mess=u'Список пакетов\nобновлён')        
+            tw = Tx_wind (source=lists_dir+pr_shortname+'-live',out='file_text',h=330,w=400,x=250,y=3,font='Arial 14',mess=u'Список пакетов\nобновлён')        
             but_p = But(parent=panel_action,com=live_parent,tx=u"Базовый список\nпакетов")
             but_synaptic = But(parent=panel_action,com=synaptic,tx=u"Запустить\nСинаптик")
             but_pkg=But(parent=panel_action,com=pkglists,tx=u"Пакеты\n(Основная страница)")
@@ -1084,7 +1092,7 @@ def pkglists():
                 def add_draft():
                     def create_draft():  # создание шаблона из дополнительной группы пакетов
                         if entry_n.text() != '' and entry_vis.text() != '' and descr.toPlainText() != '':  # если все поля заполнены
-                            subprocess.call('cp '+build_dir+'/profiles/pkg/lists/'+project.replace('.cd','').replace('.dvd','')+'-'+group_var+' '+conf_dir+'/drafts/'+str(entry_n.text()),shell=True) # копируем файл группы в файл шаблона
+                            subprocess.call('cp '+lists_dir+project.replace('.cd','').replace('.dvd','')+'-'+group_var+' '+conf_dir+'/drafts/'+str(entry_n.text()),shell=True) # копируем файл группы в файл шаблона
                             subprocess.call('echo -n  "'+str(entry_n.text())+'---'+unicode(entry_vis.text())+'---     '+unicode(descr.toPlainText()).replace('\n','     ')+'\n" >> '+conf_dir+'/drafts',shell=True) # добавляем имя и описание шаблона к список шаблонов
                             drafts()  # переходим на страницу шаблонов
                     page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/cr_draft.png',i=1,expl_loc='main_area.setGeometry(0,350,780,210)',inter_loc='inter.setGeometry(0,40,780,300)',t=u'Создание шаблона группы')
@@ -1103,7 +1111,7 @@ def pkglists():
                     mes.new_mes(tx=u"Группа не выбрана",color='purple')
                 else:
                     page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/add_gr.png',i=1,expl_loc='main_area.setGeometry(0,490,780,70)',inter_loc='inter.setGeometry(0,40,780,440)',t=u'Дополнительная группа пакетов')
-                    tw = Tx_wind (source=build_dir+'/profiles/pkg/lists/'+pr_shortname+'-'+group_var,out='file_text',h=400,w=545,x=50,y=10,font='Arial 14',del_end=True,mess=u'Список пакетов\nобновлён')  
+                    tw = Tx_wind (source=lists_dir+pr_shortname+'-'+group_var,out='file_text',h=400,w=545,x=50,y=10,font='Arial 14',del_end=True,mess=u'Список пакетов\nобновлён')  
                     but_1 = But(parent=panel_action,com=add_draft,tx=u"Создать шаблон\nиз группы")
                     but_2 = But(parent=panel_action,com=addon_pkglists,tx=u"К списку\nгрупп")
                     but_synaptic = But(parent=panel_action,com=synaptic,tx=u"Запустить\nСинаптик")
@@ -1118,7 +1126,7 @@ def pkglists():
                         open_f(n=for_dir+'/group',out='g0')  # открываем шаблон файла описания группы
                         g3 = g0.replace('gr_name',str(str(entry_group_name.text()))).replace('description',unicode(entry_group_descr.text())).replace('distro',pr_shortname) # делаем из шаблона описание группы
                         subprocess.call('echo '+'\"'+g3+'\"'+' >> '+build_dir+'/profiles/pkg/groups/'+pr_shortname+'-'+str(entry_group_name.text())+'.directory',shell=True)   # забрасываем его куда надо                     
-                        open_f(n=build_dir+'/profiles/pkg/lists/'+pr_shortname+'-'+str(entry_group_name.text()),mode='w',tx=pkgs) # создаём пустой файл пакетов этой группы и, если группа создаётся из шаблона, копируем его туда
+                        open_f(n=lists_dir+pr_shortname+'-'+str(entry_group_name.text()),mode='w',tx=pkgs) # создаём пустой файл пакетов этой группы и, если группа создаётся из шаблона, копируем его туда
                         open_f (n=pr_config+'-groups',mode='a',tx=str(entry_group_name.text())+'---'+unicode(entry_group_descr.text())+'\n') # вписываем в конфиг групп проекта новую группу
                         open_f(n=conf_dir+'/projects/'+project+'-groups',out='gr_nam',sl='.splitlines()')
                         mm1 = []
@@ -2071,7 +2079,6 @@ def branding(wb=0,demo_mode=0,demo_mode2=0):
                 br_thread.started.connect(br_run.run)                
                 br_thread.start()     
     
-    
     if work_branding == 'altlinux-club-small':
         what_branding.setText(u'Секция брендинга\nв демо-режиме')
     else:
@@ -2093,30 +2100,59 @@ def params():
     global inter
     global set_par
     global mp_mpd_default
-    set_par = 'par'  # указание для класса Sett, что открыта страница параметров сборочницы, а не настроек программы.
-    page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/params.png',i=1,expl_loc='main_area.setGeometry(0,220,780,310)',inter_loc='inter.setGeometry(30,70,780,150)',t=u'Сборочная система')
-    inter.layout = QVBoxLayout(inter)
+    global fr_settings
+    global entry_build_root
     
     def mp_mpd_default(rb_name):
+        global mp_mpd_def
         config_write(name='mp_mpd_work',value=rb_name)
+        mp_mpd_def = rb_name
     
     def image_dir():  # указание каталога для готовых образов
         global var_outdir         
-        var_outdir = QFileDialog.getExistingDirectory(root, u'Каталог для готовых образов',navigator_dir+'/my_images')
+        var_outdir = QFileDialog.getExistingDirectory(root, u'Каталог для готовых образов',var_outdir)
         if var_outdir != () and  var_outdir != '':                
             config_write (name='outdir',value=var_outdir)
         params()
-                
-    what_branding.setText('') 
-    par_mp_mpd_choice = Sett (n='mp_mpd_choice',var=var_mp_mpd_choice,tx=u'Показывать кнопку переключения между сборочницами')
-    par_tmpfs_b = Sett (n='tmpfs_b',var=var_tmpfs_b,tx=u'Собирать пакеты брендинга в tmpfs')
-    par_tmpfs_d = Sett (n='tmpfs_d',var=var_tmpfs_d,tx=u'Собирать дистрибутивы в tmpfs')     
-    par_nice = Sett (n='nice',var=var_nice,tx=u'Ограничить потребление ресурсов процессом сборки') 
-    par_clean = Sett (n='clean',var=var_clean,tx=u'Очищать сборочницу после сборки дистрибутива')  
-    fr_mp_mpd = R_But(x=485,y=50,h=80,w=210,r_list=['mp---mkimage-profiles','mpd---mkimage-profiles-desktop'],parent=inter,func='mp_mpd_default',vis='line2[1]',checked=var_mp_mpd_work)
+        
+    def build_root():  # указание корневого каталога сборки 
+        global var_mp_build_root
+        global var_mpd_build_root                 
+        exec eval ('''"var_"+var_mp_mpd_work+"_build_root = QFileDialog.getExistingDirectory(root, u'',build_dir)"''') in locals(), globals() 
+        if eval ("var_"+var_mp_mpd_work+"_build_root") != () and  eval ("var_"+var_mp_mpd_work+"_build_root") != '':                
+            config_write (name=var_mp_mpd_work+'_build_root',value=eval ("var_"+var_mp_mpd_work+"_build_root"))
+        params()        
+        
+    set_par = 'par'  # указание для класса Sett, что открыта страница параметров сборочницы, а не настроек программы.
+    what_branding.setText('')    
+    page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/params.png',i=1,expl_loc='main_area.setGeometry(0,420,780,110)',inter_loc='inter.setGeometry(10,70,780,350)',t=u'Сборочная система')
+    fr_settings = QFrame (parent=inter)
+    fr_settings.setGeometry(0,0,480,160)
+    fr_settings.layout = QVBoxLayout(fr_settings)                       
+    par_mp_mpd_choice = Sett (n='mp_mpd_choice',var=var_mp_mpd_choice,tx=u'Показывать кнопку переключения между сборочницами',hint=u'')
+    par_tmpfs_b = Sett (n='tmpfs_b',var=var_tmpfs_b,tx=u'Собирать пакеты брендинга в tmpfs',hint=u'Задействовать tmpfs - вкратце, это означает побольше использовать при сборке оперативную память и поменьше - жёсткий диск (см. главное окно программы - "С чего начать?" - "Советы по работе с программой").')
+    par_tmpfs_d = Sett (n='tmpfs_d',var=var_tmpfs_d,tx=u'Собирать дистрибутивы в tmpfs',hint=u'Задействовать tmpfs - вкратце, это означает побольше использовать при сборке оперативную память и поменьше - жёсткий диск (см. главное окно программы - "С чего начать?" - "Советы по работе с программой").')     
+    par_nice = Sett (n='nice',var=var_nice,tx=u'Ограничить потребление ресурсов процессом сборки',hint=u'Смысл ограничения потребления ресурсов в том, чтобы сборка дистрибутива не слишком тормозила работу других программ.') 
+    par_clean = Sett (n='clean',var=var_clean,tx=u'Очищать сборочницу после сборки дистрибутива',hint=u'Если отмечен этот пункт, то по завершении (хоть удачном, хоть нет) процесса сборки автоматически производится очистка сборочной системы (то есть подготовка её к повторному использованию). Иначе очистка запускается кнопкой в окне "Проекты" - "Собрать дистрибутив".')  
+    fr_settings.show()
+    entry_images = Entry(x=210,y=205,width=350,hint=u'Каталог, в который будут складываться готовые образы дистрибутивов')    
+    entry_build_root = Entry(x=210,y=245,width=350,hint=u'Корневой каталог сборки дистрибутивов. Указывать его есть смысл лишь при отключенной опции "Использовать tmpfs для сборки дистрибутивов"')
+    entry_build_root.setDisabled (eval(var_tmpfs_d))
+    entry_images.setText(var_outdir)
+    entry_build_root.setText(eval('var_'+var_mp_mpd_work+'_build_root'))
+    images_label = Label (parent=inter,x=30,y=205,tx=u'Каталог для образов')
+    build_root_label = Label (parent=inter,x=30,y=250,tx=u'Каталог сборки')
+    but_images = QPushButton(parent=inter,text=u'Поиск')  
+    but_images.setGeometry(575, 205, 45, 20)
+    but_images.clicked.connect(image_dir)
+    but_build_root = QPushButton(parent=inter,text=u'Поиск') 
+    but_build_root.setGeometry(575, 245, 45, 20)
+    but_build_root.clicked.connect(build_root)
+    but_images.show()
+    but_build_root.show()           
+    fr_mp_mpd = R_But(x=485,y=50,h=80,w=210,r_list=['mp---mkimage-profiles','mpd---mkimage-profiles-desktop'],parent=inter,func='mp_mpd_default',vis='line2[1]',checked=mp_mpd_def)   
     mp_mpd_label = Label(parent=inter,x=460,y=30,tx=u'Сборочная система по умолчанию').adjustSize()      
     panel_action.hide()
-    but_images = But(parent=panel_action,tx=u"Указать каталог\nдля образов",com=image_dir)
     but_repos = But(parent=panel_action,tx=u"Репозитории",com=all_repos)
     but_null = But(parent=panel_action,tx=u"Сброс",com=null,hint=u'Если запутались с профилями настолько, что ничего не работает, или же сборочница по какой-то причине поломалась, жмите сюда : сборочница восстановится в первоначальном виде. Если нажмёте случайно - есть возможность отмены.') 
     panel_action_show()
@@ -2291,7 +2327,7 @@ def edit_repos_list():  # правка списка репозиториев в�
 def null():
     page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/empty_'+var_mp_mpd_work+'.png',t=u'Сброс')
     def restor_part():
-        n = subprocess.Popen('tar xf /usr/share/distronavigator/mpd.tar.gz -C '+tmp_dir+' && cp -rf '+build_dir+'/Makefile.in '+tmp_dir+'/mpd && cp -rf '+build_dir+'/use.mk.in '+tmp_dir+'/mpd && cp -rf '+build_dir+'/configure.ac '+tmp_dir+'/mpd && cp -rf '+build_dir+'/profiles/pkg/lists/*  '+tmp_dir+'/mpd/profiles/pkg/lists  &&  cp -rf '+build_dir+'/profiles/pkg/groups/*  '+tmp_dir+'/mpd/profiles/pkg/groups  &&     rm -rf '+build_dir+' && mv  '+tmp_dir+'/mpd '+navigator_dir, shell=True)
+        n = subprocess.Popen('tar xf /usr/share/distronavigator/mpd.tar.gz -C '+tmp_dir+' && cp -rf '+build_dir+'/Makefile.in '+tmp_dir+'/mpd && cp -rf '+build_dir+'/use.mk.in '+tmp_dir+'/mpd && cp -rf '+build_dir+'/configure.ac '+tmp_dir+'/mpd && cp -rf '+lists_dir+'*  '+tmp_dir+'/mpd/profiles/pkg/lists  &&  cp -rf '+build_dir+'/profiles/pkg/groups/*  '+tmp_dir+'/mpd/profiles/pkg/groups  &&     rm -rf '+build_dir+' && mv  '+tmp_dir+'/mpd '+navigator_dir, shell=True)
         n.wait()   # перенос проектов из старой сборочницу в новую и удаление старой
         if n.returncode == 0:
             mes.new_mes(tx=u"Сборочная система -\nв первоначальном виде.\nВаши проекты \nсохранены")
@@ -2310,9 +2346,11 @@ def set_gui():
     global var_expls
     global set_par
     set_par = 'set' # указание для класса Sett, что открыта страница настроек программы, а не параметров сборочницы. 
-    page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/set.png',i=1,expl_loc='main_area.setGeometry(0,250,780,300)',inter_loc='inter.setGeometry(30,80,780,160)',t=u'Настройки программы')
+    page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/set.png',i=1,expl_loc='main_area.setGeometry(0,400,780,150)',inter_loc='inter.setGeometry(30,80,780,310)',t=u'Настройки программы')
+    fr_settings = QFrame (parent=inter)
+    fr_settings.setGeometry(0,0,580,220)
+    fr_settings.layout = QVBoxLayout(fr_settings)    
     panel_action.hide()
-    inter.layout = QVBoxLayout(inter)
     what_branding.setText('')                                       
     ch_baseprojects = Sett (n='baseprojects',var=var_baseprojects,tx=u'Возможность сборки не только своих, но и базовых дистрибутивов')
     ch_branding_use = Sett (n='branding_use',var=var_branding_use,tx=u'Показывать страницу выбора брендингов для использования')
@@ -2321,6 +2359,7 @@ def set_gui():
     ch_expls = Sett (n='expls',var=var_expls,tx=u'Показывать пояснения')
     ch_popup = Sett (n='popup',var=var_popup,tx=u'Показывать подсказки к кнопкам')
     ch_music = Sett (n='music',var=var_music,tx=u'Звуковое оповещение о завершении сборки')
+    fr_settings.show()
     log_restore()     
    
 # Главная страница
@@ -2372,6 +2411,7 @@ def main_page():
 open_f (n=navigator_dir+'/settings',out='b',sl='.splitlines()')  # настройка программы соответственно конфигам
 for x in b:                           # ...для каждой из пользовательских опций ...
     exec eval("'var_'+x.split(' ')[0]+'= x.split(' ')[1]'")in globals(), locals()  # ...создаём переменную и и записываем в неё из конфига статус опции
+mp_mpd_def = var_mp_mpd_work  # для переключения сборочницы по умолчанию   
 app = QApplication(sys.argv)
 root = QMainWindow() #  создаём окно программы
 root.move(50,80)  #  задаём его размеры и расположение на экране
