@@ -33,7 +33,9 @@ mes_is = 0  # для удаления сообщений
 var_br_edit = '' 
 branches = ['t7---t7','p7---p7','t6---t6','p6---p6']
 base_distros_mpd = ['distrocreator.cd---DistroCreator','tde-mini.cd---TDE-mini','wmsmall.cd---WMSmall','kde-lite.cd---KDE-lite','lxde-lite.cd---LXDE-lite','fvwm.cd---fvwm']
-base_distros_mp = ['tde.iso---tde.iso'] 
+base_distros_mp = ['distrocreator.iso---DistroCreator','wmsmall.iso---WMSmall','fvwm.iso---fvwm'] 
+base_distros_mpd_short = ['distrocreator.cd','tde-mini.cd','wmsmall.cd','kde-lite.cd','lxde-lite.cd','fvwm.cd']
+base_distros_mp_short = ['distrocreator.iso','wmsmall.iso','fvwm_mini.iso']
 make_d = False  # идёт ли в данный момент сборка дистрибутива
 make_b = False # идёт ли в данный момент сборка пакетов брендинга
 
@@ -76,6 +78,15 @@ class But (QPushButton):
             buttons.append(self)
         if var_popup == 'True' and hint != '':  # если есть подсказка, то показываем её
             self.setToolTip(u'<table width="250"><tr><td ALIGN=CENTER>'+hint+'</td></tr></table>')                                     
+
+# Одиночные кнопки
+class Sole_But (QPushButton):
+    def __init__(self,tx,parent,x,y,w,h,com=''): 
+        super(Sole_But, self).__init__(parent,text=tx)  # создаём кнопку с текстом      
+        self.setGeometry(x,y,w,h)
+        if com != '':
+            self.clicked.connect(com)
+        self.show()
 
 # Новая страница
 class Page ():
@@ -238,7 +249,23 @@ class Entry (QLineEdit):
         self.setGeometry(x,y,width,height)
         self.show() 
         if hint != '':  # если есть подсказка, то показываем её
-            self.setToolTip(u'<table width="250"><tr><td ALIGN=CENTER>'+hint+'</td></tr></table>')         
+            self.setToolTip(u'<table width="250"><tr><td ALIGN=CENTER>'+hint+'</td></tr></table>')
+
+# Однострочное поле с добавками
+class Entry_plus (QObject):   
+    def __init__(self,y,label,title,gl_var,hint='',pref=''):
+        global top_var
+        super(Entry_plus, self).__init__()
+        top_var = gl_var 
+        exec eval("top_var.replace('var_','')+'_e = Entry(x=200,y=y,width=360)'") in locals(), globals()   #  создаём кнопку         
+        eval (top_var.replace('var_','')+'_e.setText(eval(top_var))')
+        e_label = Label (parent=inter,x=30,y=y,tx=label)
+        but_s = Sole_But(parent=inter,tx=u'Поиск',x=575,y=y,w=45,h=20)       
+        but_com = Sole_But(parent=inter,tx=u'Применить',x=635,y=y,w=75,h=20) 
+        eval("but_s.clicked.connect(lambda: dir_search(x9='"+top_var+"'.replace('var_','')+'_e',title=u'"+(title)+"'))")
+        eval("but_com.clicked.connect(lambda: plus_com(x9='"+top_var+"'.replace('var_','')+'_e',pre='"+pref+"'))")
+        if hint != '':  # если есть подсказка, то показываем её
+            eval(top_var.replace('var_','')+'_e').setToolTip(u'<table width="250"><tr><td ALIGN=CENTER>'+hint+'</td></tr></table>')         
          
 # Пояснительная надпись        
 class Label (QLabel):
@@ -250,13 +277,13 @@ class Label (QLabel):
 # Пункт в настройках сборочницы или программы
 class Sett (QCheckBox):
     def __init__(self,tx='',n='',var='',hint=''):
-        exec ("def "+n+"(var=var,z=n):\n global var_"+n+"\n global var_expls\n global var_mp_mpd_choice\n global set_par\n subprocess.call ('sed -i /"+n+"/c"+n+"\ '+str(var)+' "+navigator_dir+"/settings',shell=True)\n var_"+n+" = str(var)\n if var_expls=='False':\n  tes = Pic(im='/usr/share/distronavigator/pics/explan/empty.png',x=20,y=80)\n elif set_par=='set':\n  Pic(im='/usr/share/distronavigator/pics/explan/set.png',x=0,y=130)\n if var_mp_mpd_choice=='True':\n  but_mp_mpd.show()\n else:\n  but_mp_mpd.hide()\n if z=='tmpfs_d':\n  entry_build_root.setDisabled (eval(var_tmpfs_d))   ") in globals(), locals()  # создаём функцию, запускаемую при активации/деактивации пункта
+        exec ("def "+n+"(var=var,z=n):\n global var_"+n+"\n global var_expls\n global var_mp_mpd_choice\n global set_par\n subprocess.call ('sed -i /"+n+"/c"+n+"\ '+str(var)+' "+navigator_dir+"/settings',shell=True)\n var_"+n+" = str(var)\n if var_expls=='False':\n  tes = Pic(im='/usr/share/distronavigator/pics/explan/empty.png',x=20,y=80)\n elif set_par=='set':\n  Pic(im='/usr/share/distronavigator/pics/explan/set.png',x=0,y=130)\n if var_mp_mpd_choice=='True':\n  but_mp_mpd.show()\n else:\n  but_mp_mpd.hide()\n if z=='tmpfs_d':\n  build_root_dir_e.setDisabled (eval(var_tmpfs_d))   ") in globals(), locals()  # создаём функцию, запускаемую при активации/деактивации пункта
         super(Sett, self).__init__(parent=fr_settings,text=tx)  # создаём сам пункт 
         self.setChecked(eval(var))  # активируем, если велено        
         fr_settings.layout.addWidget(self)  # размещаем
         self.clicked.connect(eval(n))  # подключаем его к вышеупомянутой функции
         if hint != '':  # если есть подсказка, то показываем её
-            self.setToolTip(u'<table width="250"><tr><td ALIGN=CENTER>'+hint+'</td></tr></table>') 
+            self.setToolTip(u'<table width="250"><tr><td ALIGN=CENTER>'+hint+'</td></tr></table>')
         
 # Отслеживание процесса сборки (дистрибутива или пакетов брендинга) 
 class Observ(QObject):
@@ -389,16 +416,20 @@ def mp_mpd_choice():
     global conf_dir
     global for_dir
     global base_distros
+    global base_distros_short
     global project
     global default_project
-    global lists_dir         
+    global lists_dir
+    global var_build_root_dir    
     build_dir = navigator_dir+'/'+var_mp_mpd_work
     conf_dir = navigator_dir+'/'+var_mp_mpd_work+'_conf'
     for_dir = '/usr/share/distronavigator/for_'+var_mp_mpd_work 
     but_mp_mpd.setText(var_mp_mpd_work)
     base_distros =  eval('base_distros_'+var_mp_mpd_work)
+    base_distros_short =  eval('base_distros_'+var_mp_mpd_work+'_short')
     default_project = eval('var_'+var_mp_mpd_work+'_default_project')
-    project = default_project # устанавливаем проект по умолчанию 
+    project = default_project # устанавливаем проект по умолчанию
+    var_build_root_dir = eval ('var_'+var_mp_mpd_work+'_build_root')
     if var_mp_mpd_work == 'mp':
         lists_dir = build_dir+'/pkg.in/lists/'
     else:
@@ -602,102 +633,115 @@ def projects(tr=0):
                 mes.new_mes(tx=u'Не указано \nотображаемое \nимя проекта',color='purple')
             elif entry_n.text() == '':              # Должно быть выбрано условное имя проекта
                 mes.new_mes(tx=u'Не указано \nусловное имя проекта',color='purple')
-            elif entry_n.text() in ['distrocreator','tde-mini','wmsmall','kde-lite','lxde-lite']: 
+            elif entry_n.text() in base_distros_short: 
                 mes.new_mes(tx=u'Условное имя \nпроекта не должно\nсовпадать с именем\nбазового дистрибутива',color='purple')
             elif ' ' in entry_n.text():
                 mes.new_mes(tx=u'Недопустимое\nусловное имя\nпроекта',color='purple')
-            else:           # создаётся проект                                 
-                s0 = src_var.split('.')
-                if src_var in ['distrocreator.cd','wmsmall.cd','tde-mini.cd','kde-lite.cd','lxde-lite.cd']:                          
-                    parent_begin = s0[0] + '-@BRANCH@.' + s0[1]    #   определяем начало строки родительского проекта в Makefile.in
-                    s0[0] = s0[0] + '-' + var_branch
-                    new_short = str(entry_n.text())+'-'+ var_branch # краткое условное имя нового проекта
-                    cfg_end = ''
-                    par_2 = s0[0].replace('-t7','').replace('-p7','').replace('-t6','').replace('-p6','')
-                else:   # если родительский проект - тоже пользовательский                      
-                    parent_begin = src_var
-                    var_branch = parent_begin.split('-')[-1].replace('.cd','').replace('.dvd','')
-                    new_short = str(entry_n.text())+'-'+var_branch 
-                    cfg_end = '-'+var_branch 
-                    par_2 = s0[0]                   
-                new = new_short+'.'+str(cd_dvd.currentText())  # полное условное имя нового проекта 
-                pr_is = subprocess.os.path.exists (conf_dir+'/projects/'+new)  # нет ли уже проекта с таким именем
-                if pr_is == True:
-                    mes.new_mes(tx=u"Проект с таким\nименем уже есть",color='purple')
-                else:
-                    variants = [' install2 main install-', ' use-'+new_short+'-live live install2 main install-', ' rescue install2 main install-',' use-'+new_short+'-live live rescue install2 main install-', ' use-'+new_short+'-live  live live-', ' use-'+new_short+'-live use-live-install install2 live live-']
-                    string_middle = variants[instal_live.currentIndex()]
-                    open_f (n=build_dir+'/Makefile.in',out='mk',sl='.splitlines()')
-                    for x in mk:              
-                        if x.startswith(parent_begin+': |'):       # Из Makefile.in вылавливаем описание родительского проекта
-                            parent_string = x
-                            if instal_live.currentIndex() in [4,5]: # если создаём Live, то строка родительского дистрибутива не нужна
-                                str_new = new+': |'+string_middle+cd_dvd.currentText().replace('dvd','dvd5').replace('.','')+'.@IMAGETYPE@'
-                            else:   # если Install, то нужна                                                               
-                                str_new = x.replace(parent_begin+': | ',new+': | use-'+new_short+' ').replace('@BRANCH@',var_branch).replace(' main ',' ').replace(' live ',' ').replace(' install2 ',' ').replace(' install-dvd5.','').replace(' install-cd.','').replace('live-cd.','').replace('live-dvd5.','').replace('@IMAGETYPE@',string_middle+cd_dvd.currentText().replace('dvd','dvd5').replace('.','')+'.@IMAGETYPE@')  # на его основе создаём описание нового... 
-                            break
-                    open_f (n=build_dir+'/Makefile.in',mode='a',tx=str_new+'\n')  #  добавляем его в Makefile.in               
-                    subprocess.call("sed -i '9s/PRODUCTS = /PRODUCTS = "+new+" /' "+build_dir+'/Makefile.in',shell=True)  # ...и его основное имя вносится туда же (в список PRODUCTS) 
-                    subprocess.call ("sed -n '/"+par_2+"\*/,/"+par_2+".cd/p' "+build_dir+"/configure.ac > "+tmp_dir+"/cfg && sed -i -e '1s/"+par_2+"/"+new_short+"/' -e '$s/"+par_2+"/"+new_short+"/I' -e '/LABEL/s/"+par_2+"/"+new_short+"/I' "+tmp_dir+"/cfg && sed -i '50r "+tmp_dir+"/cfg' "+build_dir+"/configure.ac",shell=True)   # на основе секции родительского проекта в configure.ac создаётся секция нового проекта               
-                    subprocess.call("sed -i -e '24s/use-gdm  /use-gdm  "+new_short+' '+new_short+'-main '" /' "+build_dir+"/use.mk.in", shell=True) # вписываем новый проект в use.mk.in
-                    subprocess.call('[ -e '+lists_dir+s0[0]+' ] || cp '+lists_dir+par_2+'-t7 '+lists_dir+s0[0]+' && touch '+lists_dir+new_short+' '+conf_dir+'/projects/'+new+'-groups && ln -s '+lists_dir+new_short+' '+lists_dir+new_short+'-main > /dev/null 2>&1',shell=True) # создаём нужные для проекта файлы 
-                    if instal_live.currentIndex() in [0,2]:
-                        distro_type = 'install'
-                    elif instal_live.currentIndex() in [1,3]:
-                        distro_type = 'install_live'
+            else:   # создаётся проект
+                s0 = src_var.split('.')                            
+                if var_mp_mpd_work == 'mpd':                                
+                    if src_var in base_distros_short:                          
+                        parent_begin = s0[0] + '-@BRANCH@.' + s0[1]    #   определяем начало строки родительского проекта в Makefile.in
+                        s0[0] = s0[0] + '-' + var_branch
+                        new_short = str(entry_n.text())+'-'+ var_branch # краткое условное имя нового проекта
+                        cfg_end = ''
+                        par_2 = s0[0].replace('-t7','').replace('-p7','').replace('-t6','').replace('-p6','')
+                    else:   # если родительский проект - тоже пользовательский                      
+                        parent_begin = src_var
+                        var_branch = parent_begin.split('-')[-1].replace('.cd','').replace('.dvd','')
+                        new_short = str(entry_n.text())+'-'+var_branch 
+                        cfg_end = '-'+var_branch 
+                        par_2 = s0[0]                   
+                    new = new_short+'.'+str(cd_dvd.currentText())  # полное условное имя нового проекта 
+                    pr_is = subprocess.os.path.exists (conf_dir+'/projects/'+new)  # нет ли уже проекта с таким именем
+                    if pr_is == True:
+                        mes.new_mes(tx=u"Проект с таким\nименем уже есть",color='purple')
                     else:
-                        distro_type = 'live'                        
-                    project_conf = new_short+'\n'+unicode(entry_vis.text())+'\n'+src_var.replace('.dvd','').replace('.cd','')+'\n'+var_branch+'\n\nFalse\n'+distro_type+'\n'  # текст для конфига проекта
-                    open_f(n=conf_dir+'/projects/'+new,mode='w',tx=project_conf)  # записываем этот конфиг
-                    open_f (n=conf_dir+'/work_projects',mode='a',tx=new+'---'+unicode(entry_vis.text())+'\n') # добавляем проект в список проектов 
-                    if instal_live.currentIndex() in [1,3,4,5]:
-                        prof_list = []                       
-                        for x in parent_string.split(' '):
-                            if x.startswith('use-'):
-                                prof_list.append(x.replace('use-','').replace('@BRANCH@',var_branch))
-                        open_f (n=for_dir+'/use_live',out='use0')  # из шаблона делаем  новый абзац для use.mk.in
-                        use1 = use0.replace('project',new_short).replace('prof_string',' '.join(prof_list)).replace('mark',new +'-live')
-                        open_f (n=tmp_dir+'/ul',mode='w',tx=use1)
-                        subprocess.call('cat '+tmp_dir+'/ul >> '+build_dir+'/use.mk.in', shell=True)
-                        subprocess.call('touch '+lists_dir+new_short+'-live',shell=True)
-                    projects()           
+                        variants = [' install2 main install-', ' use-'+new_short+'-live live install2 main install-', ' rescue install2 main install-',' use-'+new_short+'-live live rescue install2 main install-', ' use-'+new_short+'-live  live live-', ' use-'+new_short+'-live use-live-install install2 live live-']
+                        string_middle = variants[instal_live.currentIndex()]
+                        open_f (n=build_dir+'/Makefile.in',out='mk',sl='.splitlines()')
+                        for x in mk:              
+                            if x.startswith(parent_begin+': |'):       # Из Makefile.in вылавливаем описание родительского проекта
+                                parent_string = x
+                                if instal_live.currentIndex() in [4,5]: # если создаём Live, то строка родительского дистрибутива не нужна
+                                    str_new = new+': |'+string_middle+cd_dvd.currentText().replace('dvd','dvd5').replace('.','')+'.@IMAGETYPE@'
+                                else:   # если Install, то нужна                                                               
+                                    str_new = x.replace(parent_begin+': | ',new+': | use-'+new_short+' ').replace('@BRANCH@',var_branch).replace(' main ',' ').replace(' live ',' ').replace(' install2 ',' ').replace(' install-dvd5.','').replace(' install-cd.','').replace('live-cd.','').replace('live-dvd5.','').replace('@IMAGETYPE@',string_middle+cd_dvd.currentText().replace('dvd','dvd5').replace('.','')+'.@IMAGETYPE@')  # на его основе создаём описание нового... 
+                                break
+                        open_f (n=build_dir+'/Makefile.in',mode='a',tx=str_new+'\n')  #  добавляем его в Makefile.in               
+                        subprocess.call("sed -i '9s/PRODUCTS = /PRODUCTS = "+new+" /' "+build_dir+'/Makefile.in',shell=True)  # ...и его основное имя вносится туда же (в список PRODUCTS) 
+                        subprocess.call ("sed -n '/"+par_2+"\*/,/"+par_2+".cd/p' "+build_dir+"/configure.ac > "+tmp_dir+"/cfg && sed -i -e '1s/"+par_2+"/"+new_short+"/' -e '$s/"+par_2+"/"+new_short+"/I' -e '/LABEL/s/"+par_2+"/"+new_short+"/I' "+tmp_dir+"/cfg && sed -i '50r "+tmp_dir+"/cfg' "+build_dir+"/configure.ac",shell=True)   # на основе секции родительского проекта в configure.ac создаётся секция нового проекта               
+                        subprocess.call("sed -i -e '24s/use-gdm  /use-gdm  "+new_short+' '+new_short+'-main '" /' "+build_dir+"/use.mk.in", shell=True) # вписываем новый проект в use.mk.in
+                        subprocess.call('touch '+lists_dir+new_short+' '+conf_dir+'/projects/'+new+'-groups && ln -s '+lists_dir+new_short+' '+lists_dir+new_short+'-main > /dev/null 2>&1',shell=True) # создаём нужные для проекта файлы 
+                        if instal_live.currentIndex() in [0,2]:
+                            distro_type = 'install'
+                        elif instal_live.currentIndex() in [1,3]:
+                            distro_type = 'install_live'
+                        else:
+                            distro_type = 'live'                        
+                        project_conf = new_short+'\n'+unicode(entry_vis.text())+'\n'+src_var.replace('.dvd','').replace('.cd','')+'\n'+var_branch+'\n\nFalse\n'+distro_type+'\n'  # текст для конфига проекта
+                        open_f(n=conf_dir+'/projects/'+new,mode='w',tx=project_conf)  # записываем этот конфиг
+                        open_f (n=conf_dir+'/work_projects',mode='a',tx=new+'---'+unicode(entry_vis.text())+'\n') # добавляем проект в список проектов 
+                        if instal_live.currentIndex() in [1,3,4,5]:
+                            prof_list = []                       
+                            for x in parent_string.split(' '):
+                                if x.startswith('use-'):
+                                    prof_list.append(x.replace('use-','').replace('@BRANCH@',var_branch))
+                            open_f (n=for_dir+'/use_live',out='use0')  # из шаблона делаем  новый абзац для use.mk.in
+                            use1 = use0.replace('project',new_short).replace('prof_string',' '.join(prof_list)).replace('mark',new +'-live')
+                            open_f (n=tmp_dir+'/ul',mode='w',tx=use1)
+                            subprocess.call('cat '+tmp_dir+'/ul >> '+build_dir+'/use.mk.in', shell=True)
+                            subprocess.call('touch '+lists_dir+new_short+'-live',shell=True)
+                        projects()
+                else:  # если новый проект создаётся в m-p                         
+                    new_short = str(entry_n.text()) # краткое условное имя нового проекта
+                    new = new_short+'.iso'  # полное условное имя нового проекта 
+                    pr_is = subprocess.os.path.exists (conf_dir+'/projects/'+new)  # нет ли уже проекта с таким именем
+                    if pr_is == True:
+                        mes.new_mes(tx=u"Проект с таким\nименем уже есть",color='purple')
+                    else:
+                        subprocess.call ("sed -n '/distro\/"+s0[0]+"/,/BASE_LISTS/p' "+build_dir+"/conf.d/windowmaker.mk > "+tmp_dir+"/cfg && sed -i -e '1s/"+s0[0]+"/"+new_short+"/' -e '$s/\ )/ "+new_short+" \)/I' "+tmp_dir+"/cfg && sed -i '30r "+tmp_dir+"/cfg' "+build_dir+"/conf.d/windowmaker.mk",shell=True)                                          
+                        subprocess.call('touch '+lists_dir+new_short+' '+conf_dir+'/projects/'+new+'-groups && ln -s '+lists_dir+new_short+' > /dev/null 2>&1',shell=True) # создаём нужные для проекта файлы                     
+                        project_conf = new_short+'\n'+unicode(entry_vis.text())+'\n'+src_var.replace('.iso','')+'\n\n\nFalse\ninstall\n'  # текст для конфига проекта
+                        open_f(n=conf_dir+'/projects/'+new,mode='w',tx=project_conf)  # записываем этот конфиг
+                        open_f (n=conf_dir+'/work_projects',mode='a',tx=new+'---'+unicode(entry_vis.text())+'\n') # добавляем проект в список проектов                                            
+                    projects()                    
         
         def src_f(rb_name): 
             global src_var
             src_var = rb_name  # определяем имя родительского проекта
-            if src_var in ['distrocreator.cd','wmsmall.cd','tde-mini.cd','kde-lite.cd','lxde-lite.cd']: # выясняем, базовый он или нет...
-                for x in ['p6_rb','t6_rb','p7_rb','t7_rb']:  
-                    eval(x+'.setDisabled(False)')   # активируем...
-            else:       
-                for x in ['p6_rb','t6_rb','p7_rb','t7_rb']:  
-                    eval(x+'.setDisabled(True)')   # ...или деактивируем радиокнопки выбора бранчей 
+            if var_mp_mpd_work == 'mpd':
+                if src_var in base_distros_short: # выясняем, базовый он или нет...
+                    for x in ['p6_rb','t6_rb','p7_rb','t7_rb']:  
+                        eval(x+'.setDisabled(False)')   # активируем...
+                else:       
+                    for x in ['p6_rb','t6_rb','p7_rb','t7_rb']:  
+                        eval(x+'.setDisabled(True)')   # ...или деактивируем радиокнопки выбора бранчей 
                            
         # Интерфейс для создания нового проекта
-        if var_mp_mpd_work == 'mp':
-            mes.new_mes(tx=u'В m-p это ещё\nне работает :(',color='purple')
-        else:
-            page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/new_project.png',i=1,expl_loc='main_area.setGeometry(0,410,780,150)',inter_loc='inter.setGeometry(0,40,780,350)',t=u"Создание нового проекта")
-            panel_action.hide()        
-            but_create_project = But(parent=panel_action,com=create_project,tx=u'Создать\nпроект')         
-            panel_action_show()
-            src_var = 'distrocreator.cd'
-            radiogroup1 = QButtonGroup()
-            fr_base_distros = R_But(x=15,y=40,h=180,w=140,r_list=base_distros,parent=inter,func='src_f',vis='line2[1]',radiogroup=radiogroup1)
-            fr_branches = R_But(x=165,y=40,h=140,w=70,parent=inter,r_list=branches,func='active_branch',vis='line2[1]')
-            fr_my_projects = R_But(x=290,y=40,h=310,w=240,filename=conf_dir+'/work_projects',parent=inter,func='src_f',vis='line2[1]',radiogroup=radiogroup1) 
-            base_distro_label = Label (parent=inter,x=35,y=20,tx=u'Базовые дистрибутивы')
-            my_projects_label = Label (parent=inter,x=320,y=20,tx=u'Ваши проекты')
-            vis_name_label = Label (parent=inter,x=547,y=50,tx=u'Отображаемое имя проекта')
-            cond_name_label = Label (parent=inter,x=560,y=120,tx=u'Условное имя проекта')
-            distro_type_label = Label (parent=inter,x=560,y=190,tx=u'Тип целевого дистрибутива')               
-            entry_vis = Entry(x=542,y=70,width=208)  # Поле ввода отображаемого имени проекта                          
-            entry_n = Entry(x=542,y=140,width=154)  # Поле ввода краткого имени проекта               
+        page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/new_project.png',i=1,expl_loc='main_area.setGeometry(0,410,780,150)',inter_loc='inter.setGeometry(0,40,780,350)',t=u"Создание нового проекта")
+        panel_action.hide()        
+        but_create_project = But(parent=panel_action,com=create_project,tx=u'Создать\nпроект')         
+        panel_action_show()
+        #src_var = 'distrocreator.cd'
+        radiogroup1 = QButtonGroup()
+        fr_base_distros = R_But(x=15,y=40,h=180,w=140,r_list=base_distros,parent=inter,func='src_f',vis='line2[1]',radiogroup=radiogroup1)
+        fr_my_projects = R_But(x=290,y=40,h=310,w=240,filename=conf_dir+'/work_projects',parent=inter,func='src_f',vis='line2[1]',radiogroup=radiogroup1) 
+        base_distro_label = Label (parent=inter,x=35,y=20,tx=u'Базовые дистрибутивы')
+        my_projects_label = Label (parent=inter,x=320,y=20,tx=u'Ваши проекты')
+        vis_name_label = Label (parent=inter,x=547,y=50,tx=u'Отображаемое имя проекта')
+        cond_name_label = Label (parent=inter,x=560,y=120,tx=u'Условное имя проекта')              
+        entry_vis = Entry(x=542,y=70,width=208)  # Поле ввода отображаемого имени проекта                          
+        entry_n = Entry(x=542,y=140,width=154)  # Поле ввода условного имени проекта 
+        if var_mp_mpd_work == 'mpd':
+            distro_type_label = Label (parent=inter,x=560,y=190,tx=u'Тип целевого дистрибутива') 
+            fr_branches = R_But(x=165,y=40,h=140,w=70,parent=inter,r_list=branches,func='active_branch',vis='line2[1]')                         
             cd_dvd = QComboBox(inter)  #  Выбор между cd- и dvd-вариантами
             cd_dvd.setGeometry(700,140,50,20)
             cd_dvd.show()
             cd_dvd.addItem("cd")
             cd_dvd.addItem("dvd")
-            instal_live = QComboBox(inter)  #  Выбор между cd- и dvd-вариантами
+            instal_live = QComboBox(inter)  #  Выбор типа целевого дистрибутива
             instal_live.setGeometry(542,210,238,20)
             instal_live.show()
             instal_live.addItem(u"Установочный")
@@ -907,13 +951,12 @@ def projects(tr=0):
                     str_branding = '--with-branding='+pr_branding  # ...выясняем иначе
                 configure_str = './configure '+str_branding+' --with-outdir='+var_outdir+' --with-distro='+distr+branc+' --with-aptconf='+tmp_dir+'/apt.conf >> build.log 2>&1' # строка запуска configure
                 nice19 = ''
-                use_tmpfs = eval ("'TMP='+var_"+var_mp_mpd_work+"_build_root")
+                use_tmpfs = 'TMP='+var_build_root_dir
                 if var_nice == 'True':  # ограничение жадности
                     nice19 = 'nice -n 19'
                 if var_tmpfs_d == 'True':
                     use_tmpfs = 'TMP='+tmp_dir+'/mkimage-work-dir'
                 make_str = use_tmpfs+' '+nice19+' make '+distr+' >> build.log 2>&1' # строка запуска сборки дистрибутива
-                print make_str
                 but_break_mk_distro.show()
                 but_log.show()
                 panel_log.resize(174,75)
@@ -1033,7 +1076,7 @@ def pkglists():
                 if var_mp_mpd_work == 'mpd':               
                     tw = Tx_wind (source=lists_dir+pr_shortname,out='file_text',h=240,w=400,x=250,y=3,font='Arial 14',mess=u'Список пакетов\nобновлён')
                 else:
-                    tw = Tx_wind (source=build_dir+'/pkg.in/lists/nav/'+pr_shortname.replace('.iso',''),out='file_text',h=240,w=400,x=250,y=3,font='Arial 14',mess=u'Список пакетов\nобновлён')                    
+                    tw = Tx_wind (source=build_dir+'/pkg.in/lists/'+pr_shortname.replace('.iso',''),out='file_text',h=240,w=400,x=250,y=3,font='Arial 14',mess=u'Список пакетов\nобновлён')                    
                 tw_d = 1
                 panel_action_show()
                
@@ -1052,7 +1095,8 @@ def pkglists():
                         a = '.in'               
                     tw = Tx_wind (source=lists_dir+pr_parent.replace('-t6','').replace('-p6','').replace('-t7','').replace('-p7','')+'-'+pr_branch+a,out='file_text',h=240,w=400,x=250,y=3,font='Arial 14',mess=u'Список пакетов\nобновлён')
                 else:
-                    tw = Tx_wind (source=build_dir+'/pkg.in/lists/nav/'+pr_parent.replace('-t6','').replace('-p6','').replace('-t7','').replace('-p7','').replace('.iso','')+'-'+pr_branch+a,out='file_text',h=240,w=400,x=250,y=3,font='Arial 14',mess=u'Список пакетов\nобновлён')    
+                    print pr_parent
+                    tw = Tx_wind (source=build_dir+'/pkg.in/lists/'+pr_parent.replace('-t6','').replace('-p6','').replace('-t7','').replace('-p7','').replace('.iso',''),out='file_text',h=240,w=400,x=250,y=3,font='Arial 14',mess=u'Список пакетов\nобновлён')    
                 tw_d = 1
                 panel_action_show()
                 
@@ -1316,12 +1360,12 @@ def src_branding_get():
                 else:
                     self.emit(QtCore.SIGNAL('valueChanged(QString)'),'get_err')
                                           
-    get_thread = QThread()
-    get_run = Thread_get()
-    get_run.moveToThread(get_thread)
-    get_thread.started.connect(get_run.run)                
-    get_thread.start()                                        
-    d.show()                        
+        get_thread = QThread()
+        get_run = Thread_get()
+        get_run.moveToThread(get_thread)
+        get_thread.started.connect(get_run.run)                
+        get_thread.start()                                        
+        d.show()                        
 
 # Какую именно страницу открывать при нажатии кнопки "Оформление"        
 def brandings_pages():
@@ -2101,28 +2145,12 @@ def params():
     global set_par
     global mp_mpd_default
     global fr_settings
-    global entry_build_root
     
     def mp_mpd_default(rb_name):
         global mp_mpd_def
         config_write(name='mp_mpd_work',value=rb_name)
         mp_mpd_def = rb_name
-    
-    def image_dir():  # указание каталога для готовых образов
-        global var_outdir         
-        var_outdir = QFileDialog.getExistingDirectory(root, u'Каталог для готовых образов',var_outdir)
-        if var_outdir != () and  var_outdir != '':                
-            config_write (name='outdir',value=var_outdir)
-        params()
-        
-    def build_root():  # указание корневого каталога сборки 
-        global var_mp_build_root
-        global var_mpd_build_root                 
-        exec eval ('''"var_"+var_mp_mpd_work+"_build_root = QFileDialog.getExistingDirectory(root, u'',build_dir)"''') in locals(), globals() 
-        if eval ("var_"+var_mp_mpd_work+"_build_root") != () and  eval ("var_"+var_mp_mpd_work+"_build_root") != '':                
-            config_write (name=var_mp_mpd_work+'_build_root',value=eval ("var_"+var_mp_mpd_work+"_build_root"))
-        params()        
-        
+                       
     set_par = 'par'  # указание для класса Sett, что открыта страница параметров сборочницы, а не настроек программы.
     what_branding.setText('')    
     page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/params.png',i=1,expl_loc='main_area.setGeometry(0,420,780,110)',inter_loc='inter.setGeometry(10,70,780,350)',t=u'Сборочная система')
@@ -2134,22 +2162,10 @@ def params():
     par_tmpfs_d = Sett (n='tmpfs_d',var=var_tmpfs_d,tx=u'Собирать дистрибутивы в tmpfs',hint=u'Задействовать tmpfs - вкратце, это означает побольше использовать при сборке оперативную память и поменьше - жёсткий диск (см. главное окно программы - "С чего начать?" - "Советы по работе с программой").')     
     par_nice = Sett (n='nice',var=var_nice,tx=u'Ограничить потребление ресурсов процессом сборки',hint=u'Смысл ограничения потребления ресурсов в том, чтобы сборка дистрибутива не слишком тормозила работу других программ.') 
     par_clean = Sett (n='clean',var=var_clean,tx=u'Очищать сборочницу после сборки дистрибутива',hint=u'Если отмечен этот пункт, то по завершении (хоть удачном, хоть нет) процесса сборки автоматически производится очистка сборочной системы (то есть подготовка её к повторному использованию). Иначе очистка запускается кнопкой в окне "Проекты" - "Собрать дистрибутив".')  
-    fr_settings.show()
-    entry_images = Entry(x=210,y=205,width=350,hint=u'Каталог, в который будут складываться готовые образы дистрибутивов')    
-    entry_build_root = Entry(x=210,y=245,width=350,hint=u'Корневой каталог сборки дистрибутивов. Указывать его есть смысл лишь при отключенной опции "Использовать tmpfs для сборки дистрибутивов"')
-    entry_build_root.setDisabled (eval(var_tmpfs_d))
-    entry_images.setText(var_outdir)
-    entry_build_root.setText(eval('var_'+var_mp_mpd_work+'_build_root'))
-    images_label = Label (parent=inter,x=30,y=205,tx=u'Каталог для образов')
-    build_root_label = Label (parent=inter,x=30,y=250,tx=u'Каталог сборки')
-    but_images = QPushButton(parent=inter,text=u'Поиск')  
-    but_images.setGeometry(575, 205, 45, 20)
-    but_images.clicked.connect(image_dir)
-    but_build_root = QPushButton(parent=inter,text=u'Поиск') 
-    but_build_root.setGeometry(575, 245, 45, 20)
-    but_build_root.clicked.connect(build_root)
-    but_images.show()
-    but_build_root.show()           
+    fr_settings.show()  
+    entry_images = Entry_plus(y=205,label=u'Каталог для образов',title=u'Каталог для образов',gl_var='var_outdir',hint=u'Каталог, в который будут складываться готовые образы дистрибутивов') 
+    entry_build_root = Entry_plus(y=245,label=u'Каталог сборки',title=u'Корневой каталог сборки образов',gl_var='var_build_root_dir',hint=u'Корневой каталог сборки дистрибутивов. Указывать его есть смысл лишь при отключенной опции "Использовать tmpfs для сборки дистрибутивов"',pref=var_mp_mpd_work+'_') 
+    build_root_dir_e.setDisabled(eval(var_tmpfs_d))             
     fr_mp_mpd = R_But(x=485,y=50,h=80,w=210,r_list=['mp---mkimage-profiles','mpd---mkimage-profiles-desktop'],parent=inter,func='mp_mpd_default',vis='line2[1]',checked=mp_mpd_def)   
     mp_mpd_label = Label(parent=inter,x=460,y=30,tx=u'Сборочная система по умолчанию').adjustSize()      
     panel_action.hide()
@@ -2158,6 +2174,17 @@ def params():
     panel_action_show()
     log_restore()  
     
+def dir_search(x9,title):
+    path = QFileDialog.getExistingDirectory(root,title,eval(top_var))
+    if path != () and  path != '': 
+        eval (x9+'.setText(path)') 
+                       
+def plus_com(x9,pre=''):
+    global var_outdir
+    global var_build_root_dir
+    exec eval ('''"var_"+x9.replace('_e','')+"=eval(x9+'.text()')"''') in locals(),globals()
+    config_write (name=pre+x9.replace('_dir_e','').replace('_e',''),value=eval(x9+'.text()')) 
+
 # Репозитории
 def all_repos():
     page = Page(parent=root,z='/usr/share/distronavigator/pics/explan/all_repos.png',t=u'Указание репозиториев')
@@ -2434,9 +2461,9 @@ top_params = Top(com=params,tx=u'Сборочная система')
 top_set_gui = Top(com=set_gui,tx=u'Настройки программы')                                            
 main_area.show()
 root.show()
-button_re = QPushButton(u"На главную\nстраницу",parent=root)  # кнопка возврата на главную страницу (изначально скрыта)
-button_re.setGeometry(787, 450, 168, 33)
-button_re.clicked.connect(main_page)
+button_re = Sole_But (parent=root,tx=u"На главную\nстраницу",com=main_page,x=787,y=450,w=168,h=33) # кнопка возврата на главную страницу #(изначально скрыта)
+#button_re.setGeometry(787, 450, 168, 33)
+#button_re.clicked.connect(main_page)
 panel_action = QGroupBox(parent=root)  #  панель действий
 panel_action.move(785, 95)
 panel_action.layout = QVBoxLayout(panel_action)
@@ -2469,9 +2496,7 @@ browser_ch()
 brand = ''  # выбранный юзером брендинг
 choice_project = '' # указывает, пользовательский или базовый дистрибутив будет собираться
 observer = Observ()  # наблюдение за процессом сборки
-but_mp_mpd = QPushButton(u"",parent=root,text=var_mp_mpd_work)  # кнопка переключения сборочниц
-but_mp_mpd.setGeometry(910, 525, 48, 33)
-but_mp_mpd.clicked.connect(mp_mpd_switch)
+but_mp_mpd = Sole_But(parent=root,tx=var_mp_mpd_work,com=mp_mpd_switch,x=910,y=525,w=48,h=33)  # кнопка переключения сборочниц
 mp_mpd_choice() 
 project = eval('var_'+var_mp_mpd_work+'_default_project') # устанавливаем проект по умолчанию
 if var_mp_mpd_choice == 'True':
